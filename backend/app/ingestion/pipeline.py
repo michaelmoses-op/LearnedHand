@@ -14,8 +14,7 @@ from app.core.logging import get_logger
 from app.ingestion.chunking import DraftChunk, chunk_sections
 from app.ingestion.constants import EMBEDDING_DIMENSION, INGEST_STAGES
 from app.ingestion.parse_epub import ParsedBook, parse_epub
-from app.llm.accounting import AccountingLLM
-from app.llm.factory import build_provider
+from app.llm.factory import build_llm
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.job import Job
@@ -78,7 +77,7 @@ async def run_ingest(
         chunks = _build_chunks(doc.id, sections, drafts)
 
         await _set_stage(doc, "embed")
-        llm = AccountingLLM(build_provider(settings), session, ctx, document_id=doc.id)
+        llm = build_llm(settings, session, ctx, document_id=doc.id, stage="embed")
         texts = [f"{c.context_prefix}\n\n{c.body}" if c.context_prefix else c.body for c in chunks]
         # Batch embed (fake handles any size; keep batches modest for future real providers).
         vectors: list[list[float]] = []
@@ -92,6 +91,8 @@ async def run_ingest(
             vectors.extend(batch.vectors)
         for chunk, vec in zip(chunks, vectors, strict=True):
             chunk.embedding = vec
+            chunk.embedding_model = settings.embedding_model
+            chunk.embedding_dim = settings.embedding_dim
 
         await ChunkRepository(session, ctx).replace_for_document(doc.id, chunks)
         max_ord = max(c.ordinal for c in chunks)

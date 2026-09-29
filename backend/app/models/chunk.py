@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    String,
     Text,
     UniqueConstraint,
 )
@@ -64,6 +65,8 @@ class Chunk(Base):
     char_end: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
     token_count: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+    embedding_model: Mapped[str | None] = mapped_column(String(100))
+    embedding_dim: Mapped[int | None] = mapped_column(Integer)
     search_vector: Mapped[Any] = mapped_column(
         TSVECTOR,
         Computed(

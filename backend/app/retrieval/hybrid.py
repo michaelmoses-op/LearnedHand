@@ -12,8 +12,7 @@ from app.core.config import Settings
 from app.core.deps import AuthContext
 from app.core.errors import DomainError
 from app.core.logging import get_logger
-from app.llm.accounting import AccountingLLM
-from app.llm.factory import build_provider
+from app.llm.factory import build_llm
 from app.models.chunk import Chunk
 from app.repositories.content import ProgressRepository
 from app.retrieval.rrf import reciprocal_rank_fusion
@@ -71,7 +70,7 @@ class HybridRetriever:
         self._ctx = ctx
         self._settings = settings
         self._document_id = document_id
-        self._llm = AccountingLLM(build_provider(settings), session, ctx, document_id=document_id)
+        self._llm = build_llm(settings, session, ctx, document_id=document_id, stage="retrieve")
 
     async def resolve_progress(self, document_id: uuid.UUID) -> int:
         row = await ProgressRepository(self._session, self._ctx).get(document_id)

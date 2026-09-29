@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 Role = Literal["system", "user", "assistant"]
 
@@ -21,6 +21,7 @@ class Completion:
     input_tokens: int
     output_tokens: int
     model: str
+    cached_tokens: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +38,15 @@ class LLMProvider(Protocol):
     @property
     def name(self) -> str: ...
 
-    async def complete(self, *, model: str, messages: Sequence[ChatMessage]) -> Completion: ...
+    async def complete(
+        self,
+        *,
+        model: str,
+        messages: Sequence[ChatMessage],
+        response_schema: dict[str, Any] | None = None,
+    ) -> Completion:
+        """`response_schema` (JSON Schema) requests structured JSON output."""
+        ...
 
     def stream(self, *, model: str, messages: Sequence[ChatMessage]) -> AsyncIterator[str]: ...
 
@@ -53,3 +62,13 @@ def estimate_tokens(text: str) -> int:
     if not stripped:
         return 0
     return max(1, (len(stripped) + 3) // 4)
+
+
+class Reranker(Protocol):
+    """Scores (query, passage) relevance. Higher is better; scores are only comparable
+    within one call."""
+
+    @property
+    def name(self) -> str: ...
+
+    async def rerank(self, *, query: str, passages: Sequence[str]) -> list[float]: ...

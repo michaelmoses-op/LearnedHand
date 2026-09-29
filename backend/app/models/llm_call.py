@@ -47,6 +47,8 @@ class LlmCall(Base):
     status: Mapped[str] = mapped_column(String(20), server_default=text("'ok'"))
     input_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     output_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    cached_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    stage: Mapped[str | None] = mapped_column(String(40))
     latency_ms: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     error_code: Mapped[str | None] = mapped_column(String(80))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)

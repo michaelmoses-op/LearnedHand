@@ -19,7 +19,12 @@ dependencies = [
   "lxml>=5.0",
   "tiktoken>=0.7",
   "nh3>=0.3.7",
+  "openai>=3.22.0",
 ]
+
+[project.optional-dependencies]
+# Local cross-encoder reranker (pulls in PyTorch, ~1 GB). Install with: uv sync --extra rerank
+rerank = ["sentence-transformers>=3"]
 
 [dependency-groups]
 dev = [
@@ -49,7 +54,7 @@ plugins = ["pydantic.mypy"]
 files = ["app", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["alembic.*", "asyncpg.*", "lxml.*", "tiktoken.*", "pgvector.*", "nh3.*"]
+module = ["alembic.*", "asyncpg.*", "lxml.*", "tiktoken.*", "pgvector.*", "nh3.*", "sentence_transformers.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -49,14 +49,25 @@ def test_build_provider_defaults_to_fake() -> None:
     assert isinstance(build_provider(settings), FakeLLM)
 
 
-def test_non_fake_provider_rejected() -> None:
+def test_openai_provider_requires_key() -> None:
     settings = Settings(
         _env_file=None,
         database_url="postgresql+asyncpg://u:p@h/db",
         secret_key="x" * 40,
         llm_provider="openai",
     )
-    with pytest.raises(LLMConfigError, match="fake"):
+    with pytest.raises(LLMConfigError, match="LLM_API_KEY"):
+        build_provider(settings)
+
+
+def test_anthropic_provider_not_implemented() -> None:
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://u:p@h/db",
+        secret_key="x" * 40,
+        llm_provider="anthropic",
+    )
+    with pytest.raises(LLMConfigError, match="not implemented"):
         build_provider(settings)
 
 
@@ -126,6 +137,8 @@ async def test_accounting_writes_metadata_only(
             "status",
             "input_tokens",
             "output_tokens",
+            "cached_tokens",
+            "stage",
             "latency_ms",
             "error_code",
             "created_at",

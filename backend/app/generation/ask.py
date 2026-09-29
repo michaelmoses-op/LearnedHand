@@ -17,9 +17,8 @@ from app.core.deps import AuthContext
 from app.core.errors import DomainError, NotFoundError
 from app.core.logging import get_logger
 from app.generation.citations import SourceRef, verify_citations
-from app.llm.accounting import AccountingLLM
 from app.llm.base import ChatMessage
-from app.llm.factory import build_provider
+from app.llm.factory import build_llm
 from app.models.chunk import Chunk
 from app.repositories.content import ProgressRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
@@ -164,11 +163,8 @@ class AskService:
 
         yield AskEvent("status", {"stage": "generating"})
         messages = build_messages(question=q, chunks=chunks)
-        llm = AccountingLLM(
-            build_provider(self._settings),
-            self._session,
-            self._ctx,
-            document_id=document_id,
+        llm = build_llm(
+            self._settings, self._session, self._ctx, document_id=document_id, stage="generate"
         )
         pieces: list[str] = []
         try:

@@ -1,7 +1,7 @@
 """Shared ingestion constants. EMBEDDING_DIMENSION must match the chunks.embedding column."""
 
-# pgvector column width (migration 0005). Settings.embedding_dim must equal this at runtime.
-EMBEDDING_DIMENSION = 32
+# pgvector column width (migration 0006). Settings.embedding_dim must equal this at runtime.
+EMBEDDING_DIMENSION = 1536
 
 INGEST_STAGES = ("parse", "sections", "chunk", "context", "embed")
 

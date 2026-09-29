@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import struct
 from collections.abc import AsyncIterator, Sequence
+from typing import Any
 
 from app.llm.base import ChatMessage, Completion, EmbeddingBatch, estimate_tokens
 
@@ -17,7 +19,19 @@ class FakeLLM:
     def name(self) -> str:
         return "fake"
 
-    async def complete(self, *, model: str, messages: Sequence[ChatMessage]) -> Completion:
+    async def complete(
+        self,
+        *,
+        model: str,
+        messages: Sequence[ChatMessage],
+        response_schema: dict[str, Any] | None = None,
+    ) -> Completion:
+        if response_schema is not None:
+            text = json.dumps(_example_from_schema(response_schema, response_schema))
+            inp = sum(estimate_tokens(m.content) for m in messages)
+            return Completion(
+                text=text, input_tokens=inp, output_tokens=estimate_tokens(text), model=model
+            )
         digest = _messages_digest(messages)
         # Response is synthetic metadata only — never echo message content (untrusted book text).
         text = f"[fake:{model}:{digest[:12]}] {len(messages)} messages."
@@ -68,3 +82,31 @@ def _fake_vector(text: str, dimensions: int) -> list[float]:
     # L2-normalize for stable cosine behavior in later retrieval tests.
     norm = math.sqrt(sum(x * x for x in out)) or 1.0
     return [x / norm for x in out]
+
+
+def _example_from_schema(schema: dict[str, Any], root: dict[str, Any]) -> Any:
+    """Smallest valid instance of a (pydantic-style) JSON Schema. Deterministic."""
+    if "$ref" in schema:
+        name = schema["$ref"].split("/")[-1]
+        return _example_from_schema(root.get("$defs", {}).get(name, {}), root)
+    if "default" in schema:
+        return schema["default"]
+    if "enum" in schema:
+        return schema["enum"][0]
+    for key in ("anyOf", "oneOf"):
+        if key in schema:
+            options = [o for o in schema[key] if o.get("type") != "null"] or schema[key]
+            return _example_from_schema(options[0], root)
+    kind = schema.get("type")
+    if kind == "object":
+        props = schema.get("properties", {})
+        return {k: _example_from_schema(v, root) for k, v in props.items()}
+    if kind == "array":
+        return []
+    if kind == "integer":
+        return schema.get("minimum", 0)
+    if kind == "number":
+        return float(schema.get("minimum", 0))
+    if kind == "boolean":
+        return False
+    return "fake"

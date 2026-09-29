@@ -42,9 +42,30 @@ class Settings(BaseSettings):
     # Model IDs come from env — never hard-code provider model strings in call sites.
     llm_model: str = Field(default="fake-chat", min_length=1, max_length=100)
     embedding_model: str = Field(default="fake-embed", min_length=1, max_length=100)
-    embedding_dim: int = Field(default=32, ge=8, le=4096)
+    # Must equal the chunks.embedding column width (ingestion/constants.py). pgvector's HNSW
+    # index supports at most 2000 dimensions for `vector`.
+    embedding_dim: int = Field(default=1536, ge=8, le=2000)
     llm_api_key: str | None = None  # unused while LLM_PROVIDER=fake
+    llm_base_url: str | None = None  # OpenAI-compatible gateways / test servers
+    llm_timeout_seconds: float = Field(default=60.0, gt=0)
+    llm_max_retries: int = Field(default=3, ge=0, le=10)
+    llm_breaker_threshold: int = Field(default=5, ge=1)
+    llm_breaker_cooldown_seconds: float = Field(default=30.0, gt=0)
+    # Per-user daily token budget (input + output, all calls). 0 disables the cap.
+    llm_daily_token_cap: int = Field(default=5_000_000, ge=0)
+    # Optional cheaper model for high-volume ingestion calls (prefixes, summaries).
+    llm_ingest_model: str | None = None
+    # USD per 1M tokens, used only for cost reporting (evals). 0 = unknown/free.
+    price_input_per_mtok: float = Field(default=0.0, ge=0)
+    price_output_per_mtok: float = Field(default=0.0, ge=0)
+
+    reranker: Literal["none", "fake", "cross_encoder"] = "none"
+    reranker_model: str = "BAAI/bge-reranker-base"
     storage_root: Path = Path("./var/storage")
+
+    @property
+    def ingest_model(self) -> str:
+        return self.llm_ingest_model or self.llm_model
 
     @field_validator("cors_origins", mode="before")
     @classmethod
