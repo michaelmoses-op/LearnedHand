@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     llm_provider: Literal["fake", "openai", "anthropic"] = "fake"
+    # Model IDs come from env — never hard-code provider model strings in call sites.
+    llm_model: str = Field(default="fake-chat", min_length=1, max_length=100)
+    embedding_model: str = Field(default="fake-embed", min_length=1, max_length=100)
+    embedding_dim: int = Field(default=32, ge=8, le=4096)
+    llm_api_key: str | None = None  # unused while LLM_PROVIDER=fake
     storage_root: Path = Path("./var/storage")
 
     @field_validator("cors_origins", mode="before")
