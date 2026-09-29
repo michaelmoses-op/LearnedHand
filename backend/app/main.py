@@ -11,6 +11,9 @@ from app.core.db import make_engine, make_sessionmaker
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestContextMiddleware
+from app.core.ratelimit import RateLimiter
+from app.services.mailer import ConsoleMailer
+from app.storage.local import LocalFileStorage
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -27,6 +30,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         get_logger(__name__).info("shutdown")
 
     app = FastAPI(title="LearnedHand", version="0.1.0", lifespan=lifespan)
+    app.state.settings = settings
+    app.state.limiter = RateLimiter(enabled=settings.rate_limit_enabled)
+    app.state.mailer = ConsoleMailer(settings.environment)
+    app.state.storage = LocalFileStorage(settings.storage_root)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,

@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 
+from app.core.config import Settings
+
 
 async def test_healthz(client: AsyncClient) -> None:
     r = await client.get("/healthz")
@@ -13,7 +15,7 @@ async def test_readyz_checks_database(client: AsyncClient) -> None:
     assert r.json() == {"status": "ready"}
 
 
-async def test_readyz_unavailable_when_db_down(settings, client: AsyncClient) -> None:  # type: ignore[no-untyped-def]
+async def test_readyz_unavailable_when_db_down(settings: Settings) -> None:
     from httpx import ASGITransport
 
     from app.main import create_app

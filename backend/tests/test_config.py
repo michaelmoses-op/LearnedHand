@@ -12,5 +12,6 @@ def test_missing_database_url_fails_fast(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_cors_origins_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@h/db")
+    monkeypatch.setenv("SECRET_KEY", "x" * 40)
     monkeypatch.setenv("CORS_ORIGINS", "http://a.test, http://b.test")
     assert Settings(_env_file=None).cors_origins == ["http://a.test", "http://b.test"]

@@ -9,6 +9,7 @@ permissions:
   contents: read
 
 env:
+  SECRET_KEY: ci-only-secret-key-0123456789abcdef0123456789
   DATABASE_URL: postgresql+asyncpg://app_user:app_user_dev@localhost:5432/app_dev
   MIGRATION_DATABASE_URL: postgresql+asyncpg://app_owner:app_owner_dev@localhost:5432/app_dev
   TEST_DATABASE_URL: postgresql+asyncpg://app_user:app_user_dev@localhost:5432/app_test
@@ -109,7 +110,7 @@ jobs:
       - name: smoke test /readyz
         run: |
           docker run -d --name api --network host \
-            -e DATABASE_URL="$DATABASE_URL" lh-api
+            -e DATABASE_URL="$DATABASE_URL" -e SECRET_KEY="$SECRET_KEY" lh-api
           for i in $(seq 1 30); do
             curl -fsS localhost:8000/readyz && exit 0; sleep 1
           done

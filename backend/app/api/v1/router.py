@@ -1,4 +1,7 @@
 from fastapi import APIRouter
 
+from app.api.v1 import auth, documents
+
 router = APIRouter(prefix="/api/v1")
-# Feature routers are included here as later phases add them.
+router.include_router(auth.router)
+router.include_router(documents.router)

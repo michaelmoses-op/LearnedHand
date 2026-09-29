@@ -15,9 +15,10 @@ class DomainError(Exception):
     code = "domain_error"
     title = "Bad request"
 
-    def __init__(self, detail: str | None = None) -> None:
+    def __init__(self, detail: str | None = None, headers: dict[str, str] | None = None) -> None:
         super().__init__(detail or self.title)
         self.detail = detail or self.title
+        self.headers = headers or {}
 
 
 class NotFoundError(DomainError):
@@ -26,12 +27,54 @@ class NotFoundError(DomainError):
     title = "Resource not found"
 
 
+class UnauthenticatedError(DomainError):
+    status = 401
+    code = "unauthenticated"
+    title = "Authentication required"
+
+
+class ForbiddenError(DomainError):
+    status = 403
+    code = "forbidden"
+    title = "Forbidden"
+
+
+class CsrfError(ForbiddenError):
+    code = "csrf_failed"
+    title = "CSRF validation failed"
+
+
+class ConflictError(DomainError):
+    status = 409
+    code = "conflict"
+    title = "Conflict"
+
+
+class PayloadTooLargeError(DomainError):
+    status = 413
+    code = "payload_too_large"
+    title = "Payload too large"
+
+
+class UnsupportedFileError(DomainError):
+    status = 415
+    code = "unsupported_file"
+    title = "Unsupported file type"
+
+
+class RateLimitedError(DomainError):
+    status = 429
+    code = "rate_limited"
+    title = "Too many requests"
+
+
 def problem(
     request: Request,
     status: int,
     code: str,
     title: str,
     detail: str | None = None,
+    headers: dict[str, str] | None = None,
     **extra: Any,
 ) -> JSONResponse:
     body: dict[str, Any] = {
@@ -44,13 +87,13 @@ def problem(
         "request_id": getattr(request.state, "request_id", None),
         **extra,
     }
-    return JSONResponse(body, status_code=status, media_type=PROBLEM_JSON)
+    return JSONResponse(body, status_code=status, media_type=PROBLEM_JSON, headers=headers)
 
 
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainError)
     async def _domain(request: Request, exc: DomainError) -> JSONResponse:
-        return problem(request, exc.status, exc.code, exc.title, exc.detail)
+        return problem(request, exc.status, exc.code, exc.title, exc.detail, exc.headers)
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
