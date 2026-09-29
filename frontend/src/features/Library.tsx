@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useDeleteDocument, useDocuments, useUpload } from "./documents";
 
@@ -45,15 +46,23 @@ export function Library() {
 
       <ul className="divide-y">
         {items.map((d) => (
-          <li key={d.id} className="flex items-center justify-between py-2">
-            <div>
-              <p className="font-medium">{d.title}</p>
+          <li key={d.id} className="flex items-center justify-between gap-4 py-2">
+            <div className="min-w-0">
+              <p className="font-medium">
+                <Link
+                  to="/documents/$documentId"
+                  params={{ documentId: d.id }}
+                  className="underline"
+                >
+                  {d.title}
+                </Link>
+              </p>
               <p className="text-sm text-neutral-600">
                 {d.format.toUpperCase()} · {(d.file_size / 1024 / 1024).toFixed(1)} MB · {d.status}
               </p>
             </div>
             <button
-              className="text-red-700 underline"
+              className="shrink-0 text-red-700 underline"
               onClick={() => {
                 if (window.confirm(`Delete "${d.title}"? This removes the file permanently.`))
                   remove.mutate(d.id);
