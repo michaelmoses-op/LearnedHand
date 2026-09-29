@@ -12,6 +12,7 @@ import { AuthForm } from "../features/AuthForm";
 import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
 import { Library } from "../features/Library";
+import { Reader } from "../features/Reader";
 import { ReadyStatus } from "../features/ReadyStatus";
 
 const rootRoute = createRootRoute({
@@ -42,6 +43,14 @@ function Home() {
       </div>
     </>
   );
+}
+
+function DocumentPage() {
+  const me = useMe();
+  const { documentId } = documentRoute.useParams();
+  if (me.isPending) return <p role="status">Loading…</p>;
+  if (!me.data) return <Navigate to="/login" />;
+  return <Reader documentId={documentId} />;
 }
 
 function Login() {
@@ -142,9 +151,21 @@ const signupRoute = createRoute({
   path: "/signup",
   component: Signup,
 });
+const documentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents/$documentId",
+  component: DocumentPage,
+});
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, loginRoute, signupRoute, verifyRoute, resetRoute]),
+  routeTree: rootRoute.addChildren([
+    indexRoute,
+    loginRoute,
+    signupRoute,
+    verifyRoute,
+    resetRoute,
+    documentRoute,
+  ]),
 });
 
 declare module "@tanstack/react-router" {

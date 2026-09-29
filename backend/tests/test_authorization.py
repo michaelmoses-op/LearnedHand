@@ -1,5 +1,6 @@
 import re
 import uuid
+from typing import Any
 
 import asyncpg
 import pytest
@@ -15,9 +16,20 @@ EPUB = b"PK\x03\x04" + b"authz-" * 20
 ID_ROUTES = [
     ("GET", "/api/v1/documents/{document_id}"),
     ("GET", "/api/v1/documents/{document_id}/status"),
+    ("GET", "/api/v1/documents/{document_id}/sections"),
+    ("PUT", "/api/v1/documents/{document_id}/progress"),
+    ("POST", "/api/v1/documents/{document_id}/ask"),
     ("DELETE", "/api/v1/documents/{document_id}"),
 ]
 PUBLIC_ID_ROUTES: list[tuple[str, str]] = []
+
+
+def _idor_kwargs(method: str) -> dict[str, Any]:
+    if method == "POST":
+        return {"json": {"question": "x"}}
+    if method == "PUT":
+        return {"json": {"max_ordinal": 0}}
+    return {}
 
 
 @pytest.fixture
@@ -44,9 +56,10 @@ async def test_idor_other_users_resource_is_404(
         await client.post("/api/v1/documents", content=EPUB, headers={"X-Filename": "a.epub"})
     ).json()
     url = template.format(document_id=doc["id"])
+    kwargs = _idor_kwargs(method)
     # B is refused with 404, identical to a resource that never existed.
-    r_other = await client_b.request(method, url)
-    r_missing = await client_b.request(method, template.format(document_id=uuid.uuid4()))
+    r_other = await client_b.request(method, url, **kwargs)
+    r_missing = await client_b.request(method, template.format(document_id=uuid.uuid4()), **kwargs)
     assert r_other.status_code == r_missing.status_code == 404
     assert r_other.json()["code"] == r_missing.json()["code"] == "not_found"
     # Owner's document untouched (delete by B did nothing).
@@ -66,12 +79,16 @@ async def test_list_only_shows_own_documents(client: AsyncClient, client_b: Asyn
         ("POST", "/api/v1/documents"),
         ("GET", f"/api/v1/documents/{uuid.uuid4()}"),
         ("GET", f"/api/v1/documents/{uuid.uuid4()}/status"),
+        ("GET", f"/api/v1/documents/{uuid.uuid4()}/sections"),
+        ("PUT", f"/api/v1/documents/{uuid.uuid4()}/progress"),
+        ("POST", f"/api/v1/documents/{uuid.uuid4()}/ask"),
         ("DELETE", f"/api/v1/documents/{uuid.uuid4()}"),
         ("GET", "/api/v1/auth/me"),
     ],
 )
 async def test_unauthenticated_is_401(client: AsyncClient, method: str, path: str) -> None:
-    assert (await client.request(method, path)).status_code == 401
+    kwargs = _idor_kwargs(method)
+    assert (await client.request(method, path, **kwargs)).status_code == 401
 
 
 async def test_forged_token_rejected(client: AsyncClient) -> None:

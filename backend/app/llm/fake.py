@@ -21,6 +21,9 @@ class FakeLLM:
         digest = _messages_digest(messages)
         # Response is synthetic metadata only — never echo message content (untrusted book text).
         text = f"[fake:{model}:{digest[:12]}] {len(messages)} messages."
+        # If the prompt listed sources, cite the first index so citation wiring is testable.
+        if any('<source index="' in m.content for m in messages):
+            text = f"{text} [1]"
         inp = sum(estimate_tokens(m.content) for m in messages)
         out = estimate_tokens(text)
         return Completion(text=text, input_tokens=inp, output_tokens=out, model=model)

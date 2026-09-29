@@ -1,8 +1,11 @@
+import json
 import uuid
+from collections.abc import AsyncIterator
 from typing import Annotated
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from fastapi.responses import StreamingResponse
 
 from app.core.deps import (
     AuthDbDep,
@@ -13,11 +16,18 @@ from app.core.deps import (
     csrf_protect,
 )
 from app.core.errors import NotFoundError, PayloadTooLargeError
+from app.generation.ask import AskService, DocumentNotReadyError, list_readable_sections
 from app.repositories.content import ProgressRepository
 from app.schemas.documents import DocumentOut, DocumentPage, DocumentStatusOut
+from app.schemas.qa import AskIn, ProgressIn, ProgressOut, SectionListOut, SectionOut
 from app.services.documents import DocumentService, decode_cursor, encode_cursor
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(csrf_protect)])
+
+
+def _sse(event: str, data: dict[str, object]) -> bytes:
+    payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n".encode()
 
 
 @router.post(
@@ -107,3 +117,70 @@ async def delete_document(
         raise NotFoundError("Document not found")
     await db.commit()
     return Response(status_code=204)
+
+
+@router.get("/{document_id}/sections", response_model=SectionListOut)
+async def list_sections(document_id: uuid.UUID, auth: AuthDep, db: AuthDbDep) -> SectionListOut:
+    rows = await list_readable_sections(db, auth, document_id)
+    return SectionListOut(items=[SectionOut.model_validate(r) for r in rows])
+
+
+@router.put("/{document_id}/progress", response_model=ProgressOut)
+async def put_progress(
+    document_id: uuid.UUID, body: ProgressIn, auth: AuthDep, db: AuthDbDep, storage: StorageDep
+) -> ProgressOut:
+    doc = await DocumentService(db, auth, storage).repo.get(document_id)
+    if doc is None:
+        raise NotFoundError("Document not found")
+    row = await ProgressRepository(db, auth).upsert(document_id, body.max_ordinal)
+    await db.commit()
+    return ProgressOut(document_id=document_id, max_ordinal=row.max_ordinal)
+
+
+@router.post(
+    "/{document_id}/ask",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "description": "SSE stream (status, sources, token, citations, done, error)",
+            "content": {"text/event-stream": {}},
+        }
+    },
+)
+async def ask_document(
+    document_id: uuid.UUID,
+    body: AskIn,
+    auth: AuthDep,
+    db: AuthDbDep,
+    settings: SettingsDep,
+    storage: StorageDep,
+    limiter: LimiterDep,
+) -> StreamingResponse:
+    """Cited Q&A over POST+fetch SSE (not EventSource — CSRF requires a custom header)."""
+    limiter.check(f"ask:user:{auth.user_id}", 60, 3600)
+    # Resolve ownership / readiness before streaming so IDOR clients get JSON 404/409.
+    doc = await DocumentService(db, auth, storage).repo.get(document_id)
+    if doc is None:
+        raise NotFoundError("Document not found")
+    if doc.status != "ready":
+        raise DocumentNotReadyError("Document is not ready for questions")
+
+    async def events() -> AsyncIterator[bytes]:
+        try:
+            async for ev in AskService(db, auth, settings).ask_stream(
+                document_id=document_id, question=body.question, limit=body.limit
+            ):
+                yield _sse(ev.event, ev.data)
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            yield _sse("error", {"code": "ask_failed", "detail": "Ask failed"})
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

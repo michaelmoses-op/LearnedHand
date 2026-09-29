@@ -1,4 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { File as NodeFile } from "node:buffer";
@@ -23,11 +30,24 @@ const doc = {
 };
 
 function renderIt() {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <Library />
-    </QueryClientProvider>,
-  );
+  const root = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={new QueryClient()}>
+        <Library />
+      </QueryClientProvider>
+    ),
+  });
+  const index = createRoute({ getParentRoute: () => root, path: "/", component: () => null });
+  const docRoute = createRoute({
+    getParentRoute: () => root,
+    path: "/documents/$documentId",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([index, docRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  render(<RouterProvider router={router} />);
 }
 
 test("shows empty state", async () => {
@@ -43,7 +63,7 @@ test("lists documents", async () => {
     http.get("*/api/v1/documents", () => HttpResponse.json({ items: [doc], next_cursor: null })),
   );
   renderIt();
-  expect(await screen.findByText("Godel Escher Bach", { selector: "p" })).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Godel Escher Bach" })).toBeInTheDocument();
   expect(screen.getByText(/EPUB · 2.0 MB · uploaded/)).toBeInTheDocument();
 });
 
