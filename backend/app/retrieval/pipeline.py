@@ -11,6 +11,7 @@ sections are never skipped, and nothing beyond `progress` is ever reachable.
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import Sequence
@@ -53,6 +54,20 @@ def _scoped[T](
         Chunk.document_id == document_id,
         Chunk.ordinal <= progress,
     )
+
+
+_TS_TOKEN = re.compile(r"\w+", re.UNICODE)
+
+
+def _ts_query(query: str, operator: str) -> ColumnElement[Any] | None:
+    """Build a tsquery. OR-mode passes only `\\w+` tokens to `to_tsquery` (no operators from
+    user text can reach it); stop words are dropped by the `english` config."""
+    if operator == "and":
+        return func.plainto_tsquery("english", query)
+    tokens = list(dict.fromkeys(t.lower() for t in _TS_TOKEN.findall(query)))[:64]
+    if not tokens:
+        return None
+    return func.to_tsquery("english", " | ".join(tokens))
 
 
 class _Timer:
@@ -281,7 +296,9 @@ class RetrievalPipeline:
         cfg: RetrievalConfig,
         scope: ColumnElement[bool] | None,
     ) -> list[uuid.UUID]:
-        ts_query = func.plainto_tsquery("english", query)
+        ts_query = _ts_query(query, cfg.fts_operator)
+        if ts_query is None:
+            return []
         vector: Any = (
             Chunk.search_vector
             if cfg.use_context_prefix

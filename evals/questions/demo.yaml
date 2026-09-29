@@ -1,0 +1,80 @@
+# Synthetic questions for the built-in demo book (evals/corpus.py). These exercise the harness
+# and give `make eval` something to compare out of the box; they are NOT a substitute for real
+# questions about real books. Add your own files here (see evals/README.md).
+name: demo
+description: Factual and spoiler-gate questions over "The Chronicle of Saltmere".
+corpus:
+  demo: true
+questions:
+  - id: harbor-ships
+    question: How many ships did the harbormaster record entering Saltmere in the spring of 1611?
+    expected_chunks: ["forty-two ships"]
+    expected_points: ["forty-two"]
+  - id: harbor-beacon
+    question: What material did Tobias Wren use to rebuild the beacon tower?
+    expected_chunks: ["grey granite"]
+    expected_points: ["granite"]
+  - id: harbor-cod
+    question: To whom was salt cod sold each autumn?
+    expected_chunks: ["merchants from Bergen"]
+    expected_points: ["Bergen"]
+  - id: orchard-trees
+    question: How many apple trees did the Calder family plant on the eastern slope?
+    expected_chunks: ["three hundred apple trees"]
+    expected_points: ["three hundred"]
+  - id: orchard-bees
+    question: What did Ines Varga introduce to pollinate the orchard blossom?
+    expected_chunks: ["twelve hives"]
+    expected_points: ["twelve hives"]
+  - id: orchard-ripen
+    question: In which month does the Saltmere Gold apple ripen?
+    expected_chunks: ["ripens late in October"]
+    expected_points: ["October"]
+  - id: foundry-furnace
+    question: Who fired the foundry's first furnace, and when?
+    expected_chunks: ["ironmaster Corwin Hale"]
+    expected_points: ["Corwin Hale", "1748"]
+  - id: foundry-bell
+    question: How much does the cast-iron bell in the market square weigh?
+    expected_chunks: ["nine hundred pounds"]
+    expected_points: ["nine hundred pounds"]
+  - id: foundry-strike
+    question: What did the foundry workers win when they struck in 1791?
+    expected_chunks: ["ten-hour day"]
+    expected_points: ["ten-hour day"]
+  - id: school-teacher
+    question: Who was the first teacher at the Saltmere school?
+    expected_chunks: ["Miss Agnes Dorr"]
+    expected_points: ["Agnes Dorr"]
+  - id: school-arithmetic
+    question: How did pupils learn arithmetic?
+    expected_chunks: ["counting barrels of salt cod"]
+    expected_points: ["counting barrels"]
+  - id: flood-height
+    question: How high did the great flood of 1866 rise above the harbor wall?
+    expected_chunks: ["four feet above the harbor wall"]
+    expected_points: ["four feet"]
+  - id: flood-shelter
+    question: Where did neighbors shelter families during the flood?
+    expected_chunks: ["cooling shed"]
+    expected_points: ["cooling shed"]
+  - id: library-founder
+    question: Who founded the subscription library?
+    expected_chunks: ["widow Marta Quill"]
+    expected_points: ["Marta Quill"]
+  - id: library-fee
+    question: How much did library membership cost each year?
+    expected_chunks: ["two shillings a year"]
+    expected_points: ["two shillings"]
+  # Spoiler gate: the reader has finished only the first two chapters, so nothing about the
+  # flood (chapter 5) may be retrievable, whatever the retrieval strategy.
+  - id: spoiler-flood
+    question: How high did the great flood of 1866 rise above the harbor wall?
+    progress: { after_section: 2 }
+    forbidden_snippets: ["four feet above the harbor wall", "cooling shed", "lower bridge"]
+    tags: [spoiler]
+  - id: spoiler-library
+    question: Who founded the subscription library and what did membership cost?
+    progress: { after_section: 3 }
+    forbidden_snippets: ["Marta Quill", "two shillings"]
+    tags: [spoiler]

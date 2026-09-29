@@ -1,0 +1,6 @@
+# Old full-text behaviour: every query term must match (plainto_tsquery). Kept as a comparison.
+description: Hybrid retrieval with AND-semantics full-text search.
+retrieval:
+  mode: hybrid
+  fts_operator: and
+  final_k: 10

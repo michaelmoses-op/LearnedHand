@@ -1,0 +1,6 @@
+# Ablation: embed and search chunk bodies WITHOUT the context prefix.
+description: Hybrid retrieval over body-only vectors/FTS (context prefix off).
+retrieval:
+  mode: hybrid
+  use_context_prefix: false
+  final_k: 10

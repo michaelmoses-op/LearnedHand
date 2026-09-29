@@ -1,0 +1,4 @@
+description: Flat vector-only retrieval (no full-text leg).
+retrieval:
+  mode: vector
+  final_k: 10

@@ -1,0 +1,6 @@
+# Baseline: flat chunk retrieval, vector + full-text fused with RRF, single pass.
+description: Flat hybrid (vector + FTS, RRF), context prefixes on, no rerank.
+retrieval:
+  mode: hybrid
+  final_k: 10
+  candidate_k: 40

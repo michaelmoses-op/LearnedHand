@@ -75,6 +75,14 @@ def _messages_digest(messages: Sequence[ChatMessage]) -> str:
 
 _WORD = re.compile(r"[a-z0-9]+")
 _BLOCK = re.compile(r"<(passage|part_summary)[^>]*>\n?(.*?)\n?</\1>", re.DOTALL)
+_STOPWORDS = frozenset(
+    {
+        *("a", "an", "and", "are", "as", "at", "be", "but", "by", "did", "do", "does"),
+        *("for", "from", "had", "has", "have", "how", "in", "is", "it", "its", "of"),
+        *("on", "or", "that", "the", "their", "they", "this", "to", "was", "were"),
+        *("what", "when", "where", "which", "who", "whom", "why", "with"),
+    }
+)
 _SLOTS_PER_TOKEN = 3
 _SUMMARY_WORDS_PER_BLOCK = 45
 _SUMMARY_WORDS_MAX = 160
@@ -101,15 +109,19 @@ def _fake_vector(text: str, dimensions: int) -> list[float]:
     Texts sharing words get high cosine similarity, so retrieval evals mean something offline.
     Text without word tokens falls back to a hash-derived random vector.
     """
-    tokens = _WORD.findall(text.lower())
-    if not tokens:
+    counts: dict[str, int] = {}
+    for tok in _WORD.findall(text.lower()):
+        if tok not in _STOPWORDS:
+            counts[tok] = counts.get(tok, 0) + 1
+    if not counts:
         return _hash_vector(text, dimensions)
     vec = [0.0] * dimensions
-    for tok in tokens:
+    for tok, n in counts.items():
+        weight = 1.0 + math.log(n)  # sub-linear term frequency
         digest = hashlib.sha256(tok.encode()).digest()
         for k in range(_SLOTS_PER_TOKEN):
             idx = int.from_bytes(digest[k * 4 : k * 4 + 3], "big") % dimensions
-            vec[idx] += 1.0 if digest[k * 4 + 3] & 1 else -1.0
+            vec[idx] += weight if digest[k * 4 + 3] & 1 else -weight
     norm = math.sqrt(sum(x * x for x in vec))
     if norm == 0.0:
         return _hash_vector(text, dimensions)

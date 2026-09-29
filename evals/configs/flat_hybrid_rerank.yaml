@@ -1,0 +1,9 @@
+# `fake` is a lexical stand-in so CI/offline runs work. For real numbers use:
+#   uv sync --extra rerank   and set   reranker: cross_encoder
+description: Hybrid retrieval, then rerank the fused pool.
+reranker: fake
+retrieval:
+  mode: hybrid
+  rerank: true
+  rerank_pool: 30
+  final_k: 10

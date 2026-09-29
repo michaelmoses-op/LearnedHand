@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint format typecheck migrate gen-api db-reset seed eval
+.PHONY: setup dev test lint format typecheck migrate gen-api db-reset seed eval compare
 
 setup:
 	@test -f .env || cp .env.example .env
@@ -16,15 +16,15 @@ test:
 	cd frontend && npm test
 
 lint:
-	cd backend && uv run ruff check . && uv run ruff format --check .
+	cd backend && uv run ruff check . ../evals && uv run ruff format --check . ../evals
 	cd frontend && npm run lint
 
 format:
-	cd backend && uv run ruff format . && uv run ruff check --fix .
+	cd backend && uv run ruff format . ../evals && uv run ruff check --fix . ../evals
 	cd frontend && npm run format
 
 typecheck:
-	cd backend && uv run mypy app tests
+	cd backend && uv run mypy
 	cd frontend && npm run typecheck
 
 migrate:
@@ -40,5 +40,11 @@ db-reset:
 seed:
 	@echo "seed: not implemented until Phase 2"
 
+# Runs every config in evals/configs/ over evals/questions/*.yaml and prints a comparison table.
+# Works out of the box with the fake provider and the built-in demo book; needs `make migrate`.
 eval:
-	@echo "eval: not implemented until Phase 3"
+	cd backend && PYTHONPATH=.. uv run python -m evals.run
+
+# e.g. make compare ARGS="baseline_flat_hybrid hierarchical_hybrid"
+compare:
+	cd backend && PYTHONPATH=.. uv run python -m evals.compare $(ARGS)

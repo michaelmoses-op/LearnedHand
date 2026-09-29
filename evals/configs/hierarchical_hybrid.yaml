@@ -1,0 +1,7 @@
+# Broad pass over section summaries, then hybrid drill-down inside the picked ranges.
+description: Hierarchical (summaries → drill-down) hybrid retrieval.
+retrieval:
+  mode: hybrid
+  hierarchical: true
+  broad_k: 3
+  final_k: 10

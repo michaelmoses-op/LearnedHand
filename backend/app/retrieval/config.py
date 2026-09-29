@@ -21,6 +21,9 @@ class RetrievalConfig(BaseModel):
     use_context_prefix: bool = True  # False needs chunks.embedding_plain (STORE_PLAIN_EMBEDDINGS)
     mode: Literal["vector", "fts", "hybrid"] = "hybrid"
     rerank: bool = False
+    # "or": any query term may match (rank by overlap) — right for natural-language questions.
+    # "and": every term must match (Postgres plainto_tsquery; the Phase 2 behaviour).
+    fts_operator: Literal["and", "or"] = "or"
     candidate_k: int = Field(default=40, ge=1, le=500)
     rerank_pool: int = Field(default=30, ge=1, le=200)  # fused candidates sent to the reranker
     final_k: int = Field(default=8, ge=1, le=50)

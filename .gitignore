@@ -12,3 +12,5 @@ node_modules/
 dist/
 *.log
 .DS_Store
+evals/results/*
+!evals/results/.gitkeep

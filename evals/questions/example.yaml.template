@@ -1,0 +1,19 @@
+# TEMPLATE (HUMAN-OWNED): copy to evals/questions/<name>.yaml and fill in with a book you own.
+# Files ending in .yaml are loaded by `make eval`; this template is ignored.
+name: my-book
+description: Real questions about a real EPUB.
+corpus:
+  epub: ../../path/to/your-book.epub   # relative to this file
+questions:
+  - id: q1
+    question: "Why does the author argue that ...?"
+    # Identify gold passages by a distinctive snippet of their text (case-insensitive):
+    expected_chunks: ["a distinctive phrase from the passage that answers the question"]
+    # Facts a correct answer must contain (used by the LLM judge):
+    expected_points: ["first key point", "second key point"]
+    tags: [argument]
+  - id: q2-spoiler
+    question: "What happens to the protagonist at the end?"
+    progress: { after_section: 3 }        # reader has finished 3 sections
+    forbidden_snippets: ["a phrase from a later chapter that must never be retrieved"]
+    tags: [spoiler]

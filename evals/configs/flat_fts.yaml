@@ -1,0 +1,4 @@
+description: Flat full-text-only retrieval (no embeddings leg).
+retrieval:
+  mode: fts
+  final_k: 10
