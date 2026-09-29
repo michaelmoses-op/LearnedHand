@@ -11,6 +11,7 @@ import { useState } from "react";
 import { AuthForm } from "../features/AuthForm";
 import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
+import { ConceptMap } from "../features/ConceptMap";
 import { Library } from "../features/Library";
 import { Reader } from "../features/Reader";
 import { ReadyStatus } from "../features/ReadyStatus";
@@ -51,6 +52,14 @@ function DocumentPage() {
   if (me.isPending) return <p role="status">Loading…</p>;
   if (!me.data) return <Navigate to="/login" />;
   return <Reader documentId={documentId} />;
+}
+
+function ConceptsPage() {
+  const me = useMe();
+  const { documentId } = conceptsRoute.useParams();
+  if (me.isPending) return <p role="status">Loading…</p>;
+  if (!me.data) return <Navigate to="/login" />;
+  return <ConceptMap documentId={documentId} />;
 }
 
 function Login() {
@@ -157,6 +166,12 @@ const documentRoute = createRoute({
   component: DocumentPage,
 });
 
+const conceptsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents/$documentId/concepts",
+  component: ConceptsPage,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
@@ -165,6 +180,7 @@ export const router = createRouter({
     verifyRoute,
     resetRoute,
     documentRoute,
+    conceptsRoute,
   ]),
 });
 

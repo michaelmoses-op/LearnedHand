@@ -87,6 +87,18 @@ export function Reader({ documentId }: { documentId: string }) {
       <h2 className="text-xl font-semibold">{doc.data.title}</h2>
       <p className="text-sm text-neutral-600">
         {doc.data.format.toUpperCase()} · {doc.data.status}
+        {doc.data.status === "ready" && (
+          <>
+            {" · "}
+            <Link
+              to="/documents/$documentId/concepts"
+              params={{ documentId }}
+              className="underline"
+            >
+              Concepts
+            </Link>
+          </>
+        )}
       </p>
 
       <form className="my-6 space-y-2" onSubmit={onAsk}>

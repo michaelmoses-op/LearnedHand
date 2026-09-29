@@ -36,6 +36,107 @@
         "title": "AskIn",
         "type": "object"
       },
+      "ConceptCellOut": {
+        "additionalProperties": false,
+        "properties": {
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "intensity": {
+            "title": "Intensity",
+            "type": "number"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "chunks",
+          "intensity"
+        ],
+        "title": "ConceptCellOut",
+        "type": "object"
+      },
+      "ConceptMapOut": {
+        "additionalProperties": false,
+        "description": "Concept \u00d7 section heat map, limited to what the reader has reached.",
+        "properties": {
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptRowOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionAxisOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "progress",
+          "sections",
+          "concepts"
+        ],
+        "title": "ConceptMapOut",
+        "type": "object"
+      },
+      "ConceptRowOut": {
+        "additionalProperties": false,
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCellOut"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sections": {
+            "title": "Sections",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sections",
+          "chunks",
+          "cells"
+        ],
+        "title": "ConceptRowOut",
+        "type": "object"
+      },
       "Credentials": {
         "additionalProperties": false,
         "properties": {
@@ -346,6 +447,7 @@
                   "context",
                   "embed",
                   "summaries",
+                  "concepts",
                   "validate"
                 ],
                 "type": "string"
@@ -358,6 +460,41 @@
           }
         },
         "title": "ReingestIn",
+        "type": "object"
+      },
+      "SectionAxisOut": {
+        "additionalProperties": false,
+        "properties": {
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "fully_read": {
+            "title": "Fully Read",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "ordinal",
+          "chunks",
+          "fully_read"
+        ],
+        "title": "SectionAxisOut",
         "type": "object"
       },
       "SectionListOut": {
@@ -464,6 +601,81 @@
           "token"
         ],
         "title": "TokenRequest",
+        "type": "object"
+      },
+      "TrajectoryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "concept_id": {
+            "format": "uuid",
+            "title": "Concept Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrajectoryPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "concept_id",
+          "name",
+          "points"
+        ],
+        "title": "TrajectoryOut",
+        "type": "object"
+      },
+      "TrajectoryPointOut": {
+        "additionalProperties": false,
+        "properties": {
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "first_ordinal": {
+            "title": "First Ordinal",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "section_ordinal": {
+            "title": "Section Ordinal",
+            "type": "integer"
+          },
+          "section_title": {
+            "title": "Section Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "section_title",
+          "section_ordinal",
+          "first_ordinal",
+          "chunks",
+          "note"
+        ],
+        "title": "TrajectoryPointOut",
         "type": "object"
       },
       "UserOut": {
@@ -1032,6 +1244,116 @@
           }
         },
         "summary": "Ask Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/concepts": {
+      "get": {
+        "description": "Concept \u00d7 section heat map, restricted to what the reader has reached.",
+        "operationId": "get_concept_map_api_v1_documents__document_id__concepts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptMapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Concept Map",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/concepts/{concept_id}/trajectory": {
+      "get": {
+        "description": "How one concept develops through the sections read so far.",
+        "operationId": "get_concept_trajectory_api_v1_documents__document_id__concepts__concept_id__trajectory_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "concept_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Concept Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrajectoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Concept Trajectory",
         "tags": [
           "documents"
         ]

@@ -202,6 +202,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/concepts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Concept Map
+         * @description Concept × section heat map, restricted to what the reader has reached.
+         */
+        get: operations["get_concept_map_api_v1_documents__document_id__concepts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/concepts/{concept_id}/trajectory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Concept Trajectory
+         * @description How one concept develops through the sections read so far.
+         */
+        get: operations["get_concept_trajectory_api_v1_documents__document_id__concepts__concept_id__trajectory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/progress": {
         parameters: {
             query?: never;
@@ -346,6 +386,46 @@ export interface components {
             /** Question */
             question: string;
         };
+        /** ConceptCellOut */
+        ConceptCellOut: {
+            /** Chunks */
+            chunks: number;
+            /** Intensity */
+            intensity: number;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+        };
+        /**
+         * ConceptMapOut
+         * @description Concept × section heat map, limited to what the reader has reached.
+         */
+        ConceptMapOut: {
+            /** Concepts */
+            concepts: components["schemas"]["ConceptRowOut"][];
+            /** Progress */
+            progress: number | null;
+            /** Sections */
+            sections: components["schemas"]["SectionAxisOut"][];
+        };
+        /** ConceptRowOut */
+        ConceptRowOut: {
+            /** Cells */
+            cells: components["schemas"]["ConceptCellOut"][];
+            /** Chunks */
+            chunks: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sections */
+            sections: number;
+        };
         /** Credentials */
         Credentials: {
             /**
@@ -467,7 +547,23 @@ export interface components {
         /** ReingestIn */
         ReingestIn: {
             /** From Stage */
-            from_stage?: ("parse" | "sections" | "chunk" | "context" | "embed" | "summaries" | "validate") | null;
+            from_stage?: ("parse" | "sections" | "chunk" | "context" | "embed" | "summaries" | "concepts" | "validate") | null;
+        };
+        /** SectionAxisOut */
+        SectionAxisOut: {
+            /** Chunks */
+            chunks: number;
+            /** Fully Read */
+            fully_read: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ordinal */
+            ordinal: number;
+            /** Title */
+            title: string;
         };
         /** SectionListOut */
         SectionListOut: {
@@ -503,6 +599,36 @@ export interface components {
         TokenRequest: {
             /** Token */
             token: string;
+        };
+        /** TrajectoryOut */
+        TrajectoryOut: {
+            /**
+             * Concept Id
+             * Format: uuid
+             */
+            concept_id: string;
+            /** Name */
+            name: string;
+            /** Points */
+            points: components["schemas"]["TrajectoryPointOut"][];
+        };
+        /** TrajectoryPointOut */
+        TrajectoryPointOut: {
+            /** Chunks */
+            chunks: number;
+            /** First Ordinal */
+            first_ordinal: number;
+            /** Note */
+            note: string | null;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Section Ordinal */
+            section_ordinal: number;
+            /** Section Title */
+            section_title: string;
         };
         /** UserOut */
         UserOut: {
@@ -908,6 +1034,71 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_concept_map_api_v1_documents__document_id__concepts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptMapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_concept_trajectory_api_v1_documents__document_id__concepts__concept_id__trajectory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                concept_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrajectoryOut"];
                 };
             };
             /** @description Validation Error */
