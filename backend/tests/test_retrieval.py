@@ -16,6 +16,7 @@ from app.core.deps import AuthContext, set_rls_user
 from app.jobs.worker import process_one
 from app.models.chunk import Chunk
 from app.repositories.content import ProgressRepository
+from app.retrieval.config import RetrievalConfig
 from app.retrieval.hybrid import HybridRetriever
 from app.retrieval.rrf import reciprocal_rank_fusion
 from tests.conftest import _asyncpg_dsn
@@ -136,13 +137,15 @@ async def test_vector_and_fts_sql_both_apply_progress_filter(
         await set_rls_user(session, user_id)
         ctx = AuthContext(user_id)
         retriever = HybridRetriever(session, ctx, settings, document_id=doc_id)
-        vec = await retriever._embed_query("justice virtue institutions")
-        vector_ids = await retriever._vector_search(
-            document_id=doc_id, query_vec=vec, progress=gate, limit=50
+        pipeline = retriever._pipeline
+        cfg = RetrievalConfig(candidate_k=50)
+        emb = await pipeline._llm.embed(
+            model=settings.embedding_model,
+            texts=["justice virtue institutions"],
+            dimensions=settings.embedding_dim,
         )
-        fts_ids = await retriever._fts_search(
-            document_id=doc_id, query="justice virtue", progress=gate, limit=50
-        )
+        vector_ids = await pipeline._vector_search(doc_id, emb.vectors[0], gate, cfg, None)
+        fts_ids = await pipeline._fts_search(doc_id, "justice virtue", gate, cfg, None)
 
         if vector_ids:
             rows = (await session.execute(select(Chunk).where(Chunk.id.in_(vector_ids)))).scalars()

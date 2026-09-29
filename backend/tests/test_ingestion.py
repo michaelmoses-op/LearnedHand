@@ -106,7 +106,7 @@ async def test_ingest_pipeline_ready_with_progress_at_end(
 
     st = (await client.get(f"/api/v1/documents/{doc_id}/status")).json()
     assert st["status"] == "ready"
-    assert st["ingest_stage"] == "embed"
+    assert st["ingest_stage"] == "validate"
     assert st["error"] is None
     assert st["max_ordinal"] is not None and st["max_ordinal"] >= 0
 

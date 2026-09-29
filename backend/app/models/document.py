@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -11,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -25,7 +26,7 @@ class Document(Base):
         CheckConstraint("status in ('uploaded', 'processing', 'ready', 'failed')", name="status"),
         CheckConstraint(
             "ingest_stage is null or ingest_stage in "
-            "('parse', 'sections', 'chunk', 'context', 'embed')",
+            "('parse', 'sections', 'chunk', 'context', 'embed', 'summaries', 'validate')",
             name="ingest_stage",
         ),
     )
@@ -45,6 +46,12 @@ class Document(Base):
     status: Mapped[str] = mapped_column(String(20), server_default=text("'uploaded'"))
     ingest_stage: Mapped[str | None] = mapped_column(String(20))
     error: Mapped[str | None] = mapped_column(Text)
+    # Versions of the stages that completed (see ingestion.constants.STAGE_VERSIONS).
+    stage_versions: Mapped[dict[str, int]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb")
+    )
+    # Parsing quality report produced by the validate stage.
+    quality_report: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

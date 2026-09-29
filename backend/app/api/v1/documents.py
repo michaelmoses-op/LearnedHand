@@ -18,7 +18,13 @@ from app.core.deps import (
 from app.core.errors import NotFoundError, PayloadTooLargeError
 from app.generation.ask import AskService, DocumentNotReadyError, list_readable_sections
 from app.repositories.content import ProgressRepository
-from app.schemas.documents import DocumentOut, DocumentPage, DocumentStatusOut
+from app.schemas.documents import (
+    DocumentOut,
+    DocumentPage,
+    DocumentStatusOut,
+    QualityReportOut,
+    ReingestIn,
+)
 from app.schemas.qa import AskIn, ProgressIn, ProgressOut, SectionListOut, SectionOut
 from app.services.documents import DocumentService, decode_cursor, encode_cursor
 
@@ -98,6 +104,42 @@ async def get_document_status(
     doc = await DocumentService(db, auth, storage).repo.get(document_id)
     if doc is None:
         raise NotFoundError("Document not found")
+    progress = await ProgressRepository(db, auth).get(document_id)
+    return DocumentStatusOut(
+        id=doc.id,
+        status=doc.status,
+        ingest_stage=doc.ingest_stage,
+        error=doc.error,
+        max_ordinal=progress.max_ordinal if progress else None,
+        updated_at=doc.updated_at,
+    )
+
+
+@router.get("/{document_id}/quality", response_model=QualityReportOut)
+async def get_quality_report(
+    document_id: uuid.UUID, auth: AuthDep, db: AuthDbDep, storage: StorageDep
+) -> QualityReportOut:
+    doc = await DocumentService(db, auth, storage).repo.get(document_id)
+    if doc is None:
+        raise NotFoundError("Document not found")
+    return QualityReportOut(document_id=doc.id, report=doc.quality_report)
+
+
+@router.post("/{document_id}/reingest", response_model=DocumentStatusOut, status_code=202)
+async def reingest_document(
+    document_id: uuid.UUID,
+    body: ReingestIn,
+    auth: AuthDep,
+    db: AuthDbDep,
+    storage: StorageDep,
+    limiter: LimiterDep,
+) -> DocumentStatusOut:
+    """Re-run ingestion from a stage (default: first stale stage). Keeps reading progress."""
+    limiter.check(f"reingest:user:{auth.user_id}", 20, 3600)
+    doc = await DocumentService(db, auth, storage).reingest(document_id, body.from_stage)
+    if doc is None:
+        raise NotFoundError("Document not found")
+    await db.commit()
     progress = await ProgressRepository(db, auth).get(document_id)
     return DocumentStatusOut(
         id=doc.id,

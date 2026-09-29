@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import struct
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
@@ -32,8 +33,15 @@ class FakeLLM:
             return Completion(
                 text=text, input_tokens=inp, output_tokens=estimate_tokens(text), model=model
             )
+        extract = _extractive_summary(messages)
+        if extract is not None:
+            inp = sum(estimate_tokens(m.content) for m in messages)
+            return Completion(
+                text=extract, input_tokens=inp, output_tokens=estimate_tokens(extract), model=model
+            )
         digest = _messages_digest(messages)
-        # Response is synthetic metadata only — never echo message content (untrusted book text).
+        # Q&A responses are synthetic metadata only (never echo untrusted book text). The one
+        # exception is the extractive fake *summariser* above, whose output is stored as data.
         text = f"[fake:{model}:{digest[:12]}] {len(messages)} messages."
         # If the prompt listed sources, cite the first index so citation wiring is testable.
         if any('<source index="' in m.content for m in messages):
@@ -65,21 +73,60 @@ def _messages_digest(messages: Sequence[ChatMessage]) -> str:
     return h.hexdigest()
 
 
+_WORD = re.compile(r"[a-z0-9]+")
+_BLOCK = re.compile(r"<(passage|part_summary)[^>]*>\n?(.*?)\n?</\1>", re.DOTALL)
+_SLOTS_PER_TOKEN = 3
+_SUMMARY_WORDS_PER_BLOCK = 45
+_SUMMARY_WORDS_MAX = 160
+
+
+def _extractive_summary(messages: Sequence[ChatMessage]) -> str | None:
+    """Fake summariser: the opening words of each <passage>/<part_summary> block. Deterministic,
+    content-bearing (so hierarchical retrieval is testable offline), never used for Q&A."""
+    user = next((m.content for m in reversed(messages) if m.role == "user"), "")
+    if '<source index="' in user:
+        return None
+    blocks = _BLOCK.findall(user)
+    if not blocks:
+        return None
+    words: list[str] = []
+    for _kind, body in blocks:
+        words.extend(body.split()[:_SUMMARY_WORDS_PER_BLOCK])
+    return " ".join(words[:_SUMMARY_WORDS_MAX])
+
+
 def _fake_vector(text: str, dimensions: int) -> list[float]:
-    """Unit-ish vector derived from text hash; length == dimensions."""
+    """Deterministic *lexical* embedding: hashed bag of words, L2-normalised.
+
+    Texts sharing words get high cosine similarity, so retrieval evals mean something offline.
+    Text without word tokens falls back to a hash-derived random vector.
+    """
+    tokens = _WORD.findall(text.lower())
+    if not tokens:
+        return _hash_vector(text, dimensions)
+    vec = [0.0] * dimensions
+    for tok in tokens:
+        digest = hashlib.sha256(tok.encode()).digest()
+        for k in range(_SLOTS_PER_TOKEN):
+            idx = int.from_bytes(digest[k * 4 : k * 4 + 3], "big") % dimensions
+            vec[idx] += 1.0 if digest[k * 4 + 3] & 1 else -1.0
+    norm = math.sqrt(sum(x * x for x in vec))
+    if norm == 0.0:
+        return _hash_vector(text, dimensions)
+    return [x / norm for x in vec]
+
+
+def _hash_vector(text: str, dimensions: int) -> list[float]:
     seed = hashlib.sha256(text.encode()).digest()
     out: list[float] = []
     block = seed
     while len(out) < dimensions:
-        # Expand digest deterministically.
         block = hashlib.sha256(block).digest()
         for i in range(0, len(block) - 3, 4):
             if len(out) >= dimensions:
                 break
             (u,) = struct.unpack_from(">I", block, i)
-            # Map to (-1, 1)
             out.append((u / 0xFFFFFFFF) * 2.0 - 1.0)
-    # L2-normalize for stable cosine behavior in later retrieval tests.
     norm = math.sqrt(sum(x * x for x in out)) or 1.0
     return [x / norm for x in out]
 

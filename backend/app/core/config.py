@@ -61,6 +61,11 @@ class Settings(BaseSettings):
 
     reranker: Literal["none", "fake", "cross_encoder"] = "none"
     reranker_model: str = "BAAI/bge-reranker-base"
+    # Ingestion / retrieval defaults (evals override retrieval per config).
+    context_prefix_mode: Literal["title", "llm"] = "title"
+    store_plain_embeddings: bool = False  # body-only vectors, for the prefix ablation
+    retrieval_hierarchical: bool = False
+    retrieval_broad_k: int = Field(default=5, ge=1, le=50)
     storage_root: Path = Path("./var/storage")
 
     @property

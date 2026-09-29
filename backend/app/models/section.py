@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     text as sql_text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -49,4 +49,11 @@ class Section(Base):
     title: Mapped[str] = mapped_column(String(500))
     spine_href: Mapped[str] = mapped_column(String(1000))
     body: Mapped[str] = mapped_column("text", Text, server_default=sql_text("''"))
+    # Range of global chunk ordinals inside this section (null if it has no chunks).
+    first_chunk_ordinal: Mapped[int | None] = mapped_column(Integer)
+    last_chunk_ordinal: Mapped[int | None] = mapped_column(Integer)
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
+    # [[char_offset, page_number], ...] sorted by offset (PDF only); maps chunks to pages.
+    page_map: Mapped[list[list[int]] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=_NOW)

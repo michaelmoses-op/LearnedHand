@@ -17,6 +17,8 @@ ID_ROUTES = [
     ("GET", "/api/v1/documents/{document_id}"),
     ("GET", "/api/v1/documents/{document_id}/status"),
     ("GET", "/api/v1/documents/{document_id}/sections"),
+    ("GET", "/api/v1/documents/{document_id}/quality"),
+    ("POST", "/api/v1/documents/{document_id}/reingest"),
     ("PUT", "/api/v1/documents/{document_id}/progress"),
     ("POST", "/api/v1/documents/{document_id}/ask"),
     ("DELETE", "/api/v1/documents/{document_id}"),
@@ -24,7 +26,9 @@ ID_ROUTES = [
 PUBLIC_ID_ROUTES: list[tuple[str, str]] = []
 
 
-def _idor_kwargs(method: str) -> dict[str, Any]:
+def _idor_kwargs(method: str, template: str = "") -> dict[str, Any]:
+    if method == "POST" and template.endswith("/reingest"):
+        return {"json": {}}
     if method == "POST":
         return {"json": {"question": "x"}}
     if method == "PUT":
@@ -56,7 +60,7 @@ async def test_idor_other_users_resource_is_404(
         await client.post("/api/v1/documents", content=EPUB, headers={"X-Filename": "a.epub"})
     ).json()
     url = template.format(document_id=doc["id"])
-    kwargs = _idor_kwargs(method)
+    kwargs = _idor_kwargs(method, template)
     # B is refused with 404, identical to a resource that never existed.
     r_other = await client_b.request(method, url, **kwargs)
     r_missing = await client_b.request(method, template.format(document_id=uuid.uuid4()), **kwargs)
@@ -87,7 +91,7 @@ async def test_list_only_shows_own_documents(client: AsyncClient, client_b: Asyn
     ],
 )
 async def test_unauthenticated_is_401(client: AsyncClient, method: str, path: str) -> None:
-    kwargs = _idor_kwargs(method)
+    kwargs = _idor_kwargs(method, path)
     assert (await client.request(method, path, **kwargs)).status_code == 401
 
 

@@ -18,6 +18,7 @@ from app.core.errors import (
     PayloadTooLargeError,
     UnsupportedFileError,
 )
+from app.ingestion.constants import INGEST_STAGES, STAGE_VERSIONS
 from app.models import Document
 from app.repositories.documents import DocumentRepository
 from app.repositories.jobs import JobRepository
@@ -146,3 +147,27 @@ class DocumentService:
             return False
         await self.storage.delete(doc.storage_key)
         return True
+
+    async def reingest(self, document_id: uuid.UUID, from_stage: str | None) -> Document | None:
+        """Queue a re-run from `from_stage` (default: first stage whose version is stale)."""
+        doc = await self.repo.get(document_id)
+        if doc is None:
+            return None
+        if doc.status in ("uploaded", "processing"):
+            raise ConflictError("Document is already being ingested")
+        stage = from_stage or first_stale_stage(doc.stage_versions or {})
+        doc.status = "processing"
+        doc.error = None
+        await JobRepository(self.session, self.ctx).enqueue(
+            kind="ingest", document_id=doc.id, stage="pending", payload={"from_stage": stage}
+        )
+        await self.session.flush()
+        return doc
+
+
+def first_stale_stage(recorded: dict[str, int]) -> str:
+    """Earliest stage never run, or run at an older version than the code's; else full re-run."""
+    for stage in INGEST_STAGES:
+        if recorded.get(stage) != STAGE_VERSIONS[stage]:
+            return stage
+    return INGEST_STAGES[0]

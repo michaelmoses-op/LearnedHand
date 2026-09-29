@@ -22,7 +22,9 @@ from app.llm.factory import build_llm
 from app.models.chunk import Chunk
 from app.repositories.content import ProgressRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
-from app.retrieval.hybrid import HybridRetriever, RetrievedChunk
+from app.retrieval.config import RetrievalConfig
+from app.retrieval.pipeline import RetrievalPipeline
+from app.retrieval.types import RetrievalResult, RetrievedChunk
 
 log = get_logger("generation.ask")
 
@@ -113,10 +115,14 @@ class AskService:
         session: AsyncSession,
         ctx: AuthContext,
         settings: Settings,
+        *,
+        config: RetrievalConfig | None = None,
     ) -> None:
         self._session = session
         self._ctx = ctx
         self._settings = settings
+        self._config = config  # evals inject a config; the live path derives it from settings
+        self.last_retrieval: RetrievalResult | None = None  # stage trace of the last ask
 
     async def ask_stream(
         self,
@@ -140,10 +146,14 @@ class AskService:
             raise DocumentNotReadyError("Document is not ready for questions")
 
         yield AskEvent("status", {"stage": "retrieving"})
-        retriever = HybridRetriever(
+        pipeline = RetrievalPipeline(
             self._session, self._ctx, self._settings, document_id=document_id
         )
-        chunks = await retriever.retrieve(document_id=document_id, query=q, limit=limit)
+        config = self._config or RetrievalConfig.from_settings(self._settings)
+        config = config.model_copy(update={"final_k": limit})
+        result = await pipeline.run(document_id=document_id, query=q, config=config)
+        self.last_retrieval = result
+        chunks = result.chunks
         sources = _sources_from_chunks(chunks)
         yield AskEvent(
             "sources",

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import ConfigDict
 
@@ -30,3 +31,16 @@ class DocumentStatusOut(StrictModel):
     error: str | None
     max_ordinal: int | None
     updated_at: datetime
+
+
+IngestStageName = Literal["parse", "sections", "chunk", "context", "embed", "summaries", "validate"]
+
+
+class ReingestIn(StrictModel):
+    # Re-run this stage and every later one. Omit to resume from the first stale stage.
+    from_stage: IngestStageName | None = None
+
+
+class QualityReportOut(StrictModel):
+    document_id: uuid.UUID
+    report: dict[str, Any] | None  # null until the validate stage has run

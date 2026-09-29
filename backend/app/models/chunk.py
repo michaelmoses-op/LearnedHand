@@ -43,6 +43,12 @@ class Chunk(Base):
             postgresql_using="hnsw",
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        Index(
+            "ix_chunks_embedding_plain_hnsw",
+            "embedding_plain",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding_plain": "vector_cosine_ops"},
+        ),
         Index("ix_chunks_search_vector", "search_vector", postgresql_using="gin"),
     )
 
@@ -65,6 +71,10 @@ class Chunk(Base):
     char_end: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
     token_count: Mapped[int] = mapped_column(Integer, server_default=sql_text("0"))
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+    # Body-only embedding for the "without context prefix" ablation (settings-gated).
+    embedding_plain: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
     embedding_model: Mapped[str | None] = mapped_column(String(100))
     embedding_dim: Mapped[int | None] = mapped_column(Integer)
     search_vector: Mapped[Any] = mapped_column(

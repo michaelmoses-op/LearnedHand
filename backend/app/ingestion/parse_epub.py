@@ -36,12 +36,18 @@ class ParsedSection:
     spine_href: str
     text: str
     depth: int = 0
+    # PDF only: [[char_offset, page_number], ...] sorted by offset.
+    page_map: list[list[int]] | None = None
+    page_start: int | None = None
+    page_end: int | None = None
 
 
 @dataclass
 class ParsedBook:
     title: str
     sections: list[ParsedSection] = field(default_factory=list)
+    # Counters from the parser (e.g. stripped header/footer lines); never text.
+    stats: dict[str, int] = field(default_factory=dict)
 
 
 def parse_epub(data: bytes) -> ParsedBook:

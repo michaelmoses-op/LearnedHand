@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import bisect
+from dataclasses import dataclass, replace
 
 import tiktoken
 
@@ -19,6 +20,29 @@ class DraftChunk:
     char_start: int
     char_end: int
     token_count: int
+    page_start: int | None = None
+    page_end: int | None = None
+
+
+def _page_at(page_map: list[list[int]] | None, offset: int) -> int | None:
+    if not page_map:
+        return None
+    keys = [entry[0] for entry in page_map]
+    idx = bisect.bisect_right(keys, offset) - 1
+    return page_map[max(idx, 0)][1]
+
+
+def _with_pages(chunks: list[DraftChunk], page_map: list[list[int]] | None) -> list[DraftChunk]:
+    if not page_map:
+        return chunks
+    return [
+        replace(
+            c,
+            page_start=_page_at(page_map, c.char_start),
+            page_end=_page_at(page_map, max(c.char_end - 1, c.char_start)),
+        )
+        for c in chunks
+    ]
 
 
 def count_tokens(text: str) -> int:
@@ -29,7 +53,7 @@ def chunk_sections(sections: list[ParsedSection]) -> list[DraftChunk]:
     """Split each section on paragraph boundaries into ~300–500 token chunks."""
     out: list[DraftChunk] = []
     for idx, section in enumerate(sections):
-        out.extend(_chunk_section(idx, section.text))
+        out.extend(_with_pages(_chunk_section(idx, section.text), section.page_map))
     return out
 
 
