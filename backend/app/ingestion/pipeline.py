@@ -19,6 +19,7 @@ from app.core.deps import AuthContext
 from app.core.errors import DomainError
 from app.core.logging import get_logger
 from app.ingestion.chunking import DraftChunk, chunk_sections
+from app.ingestion.concepts import build_concepts
 from app.ingestion.constants import EMBEDDING_DIMENSION, INGEST_STAGES, STAGE_VERSIONS
 from app.ingestion.context import build_context_prefixes
 from app.ingestion.parse_epub import ParsedBook, ParsedSection, parse_epub
@@ -31,6 +32,7 @@ from app.models.job import Job
 from app.models.section import Section
 from app.repositories.content import ChunkRepository, ProgressRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.summaries import SummaryRepository
 from app.storage.base import Storage
 
 log = get_logger("ingestion.pipeline")
@@ -149,6 +151,17 @@ async def run_ingest(
             summary_count = len(summaries)
         else:
             summary_count = 0
+            summaries = await SummaryRepository(session, ctx).list_for_document(doc.id)
+
+        # ---- concepts ---------------------------------------------------------------------
+        concept_count = 0
+        if "concepts" in run:
+            await _set_stage(doc, "concepts")
+            concept_llm = build_llm(settings, session, ctx, document_id=doc.id, stage="concepts")
+            concept_count, _ = await build_concepts(
+                session, ctx, settings, concept_llm, doc, sections, chunks, summaries
+            )
+            versions["concepts"] = STAGE_VERSIONS["concepts"]
 
         # ---- validate ---------------------------------------------------------------------
         await _set_stage(doc, "validate")
@@ -168,6 +181,7 @@ async def run_ingest(
             section_count=len(sections),
             chunk_count=len(chunks),
             summary_count=summary_count,
+            concept_count=concept_count,
             quality_score=doc.quality_report["score"],
         )
     except Exception as exc:

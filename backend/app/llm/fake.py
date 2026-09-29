@@ -28,6 +28,13 @@ class FakeLLM:
         response_schema: dict[str, Any] | None = None,
     ) -> Completion:
         if response_schema is not None:
+            special = _special_structured(response_schema, messages)
+            if special is not None:
+                text = json.dumps(special)
+                inp = sum(estimate_tokens(m.content) for m in messages)
+                return Completion(
+                    text=text, input_tokens=inp, output_tokens=estimate_tokens(text), model=model
+                )
             text = json.dumps(_example_from_schema(response_schema, response_schema))
             inp = sum(estimate_tokens(m.content) for m in messages)
             return Completion(
@@ -86,6 +93,28 @@ _STOPWORDS = frozenset(
 _SLOTS_PER_TOKEN = 3
 _SUMMARY_WORDS_PER_BLOCK = 45
 _SUMMARY_WORDS_MAX = 160
+
+
+def _special_structured(
+    schema: dict[str, Any], messages: Sequence[ChatMessage]
+) -> dict[str, Any] | None:
+    """Deterministic, content-aware fake answers for the app's own structured prompts, so the
+    concept / routing / gap-check features are exercisable offline. Keyed on schema properties."""
+    props = set(schema.get("properties", {}))
+    user = next((m.content for m in reversed(messages) if m.role == "user"), "")
+    if "concepts" in props:
+        return {"concepts": _fake_concepts(user)}
+    return None
+
+
+def _fake_concepts(user: str) -> list[dict[str, str]]:
+    counts: dict[str, int] = {}
+    for _kind, body in _BLOCK.findall(user):
+        for tok in _WORD.findall(body.lower()):
+            if len(tok) >= 6 and tok not in _STOPWORDS and not tok.isdigit():
+                counts[tok] = counts.get(tok, 0) + 1
+    top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+    return [{"name": w, "note": f"This section discusses {w}."} for w, _ in top]
 
 
 def _extractive_summary(messages: Sequence[ChatMessage]) -> str | None:

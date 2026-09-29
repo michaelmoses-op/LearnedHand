@@ -18,6 +18,8 @@ ID_ROUTES = [
     ("GET", "/api/v1/documents/{document_id}/status"),
     ("GET", "/api/v1/documents/{document_id}/sections"),
     ("GET", "/api/v1/documents/{document_id}/quality"),
+    ("GET", "/api/v1/documents/{document_id}/concepts"),
+    ("GET", "/api/v1/documents/{document_id}/concepts/{concept_id}/trajectory"),
     ("POST", "/api/v1/documents/{document_id}/reingest"),
     ("PUT", "/api/v1/documents/{document_id}/progress"),
     ("POST", "/api/v1/documents/{document_id}/ask"),
@@ -59,11 +61,13 @@ async def test_idor_other_users_resource_is_404(
     doc = (
         await client.post("/api/v1/documents", content=EPUB, headers={"X-Filename": "a.epub"})
     ).json()
-    url = template.format(document_id=doc["id"])
+    url = template.format(document_id=doc["id"], concept_id=uuid.uuid4())
     kwargs = _idor_kwargs(method, template)
     # B is refused with 404, identical to a resource that never existed.
     r_other = await client_b.request(method, url, **kwargs)
-    r_missing = await client_b.request(method, template.format(document_id=uuid.uuid4()), **kwargs)
+    r_missing = await client_b.request(
+        method, template.format(document_id=uuid.uuid4(), concept_id=uuid.uuid4()), **kwargs
+    )
     assert r_other.status_code == r_missing.status_code == 404
     assert r_other.json()["code"] == r_missing.json()["code"] == "not_found"
     # Owner's document untouched (delete by B did nothing).

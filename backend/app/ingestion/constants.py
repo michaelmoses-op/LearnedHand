@@ -3,7 +3,16 @@
 # pgvector column width (migration 0006). Settings.embedding_dim must equal this at runtime.
 EMBEDDING_DIMENSION = 1536
 
-INGEST_STAGES = ("parse", "sections", "chunk", "context", "embed", "summaries", "validate")
+INGEST_STAGES = (
+    "parse",
+    "sections",
+    "chunk",
+    "context",
+    "embed",
+    "summaries",
+    "concepts",
+    "validate",
+)
 
 # Bump a stage's version to force it (and every later stage) to re-run on re-ingest.
 STAGE_VERSIONS: dict[str, int] = {
@@ -13,6 +22,7 @@ STAGE_VERSIONS: dict[str, int] = {
     "context": 1,
     "embed": 1,
     "summaries": 1,
+    "concepts": 1,
     "validate": 1,
 }
 

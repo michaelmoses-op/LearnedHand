@@ -18,6 +18,7 @@ from app.core.deps import (
 from app.core.errors import NotFoundError, PayloadTooLargeError
 from app.generation.ask import AskService, DocumentNotReadyError, list_readable_sections
 from app.repositories.content import ProgressRepository
+from app.schemas.concepts import ConceptMapOut, TrajectoryOut
 from app.schemas.documents import (
     DocumentOut,
     DocumentPage,
@@ -26,6 +27,7 @@ from app.schemas.documents import (
     ReingestIn,
 )
 from app.schemas.qa import AskIn, ProgressIn, ProgressOut, SectionListOut, SectionOut
+from app.services.concepts import ConceptService
 from app.services.documents import DocumentService, decode_cursor, encode_cursor
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(csrf_protect)])
@@ -113,6 +115,25 @@ async def get_document_status(
         max_ordinal=progress.max_ordinal if progress else None,
         updated_at=doc.updated_at,
     )
+
+
+@router.get("/{document_id}/concepts", response_model=ConceptMapOut)
+async def get_concept_map(
+    document_id: uuid.UUID,
+    auth: AuthDep,
+    db: AuthDbDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 60,
+) -> ConceptMapOut:
+    """Concept × section heat map, restricted to what the reader has reached."""
+    return await ConceptService(db, auth).concept_map(document_id, limit)
+
+
+@router.get("/{document_id}/concepts/{concept_id}/trajectory", response_model=TrajectoryOut)
+async def get_concept_trajectory(
+    document_id: uuid.UUID, concept_id: uuid.UUID, auth: AuthDep, db: AuthDbDep
+) -> TrajectoryOut:
+    """How one concept develops through the sections read so far."""
+    return await ConceptService(db, auth).trajectory(document_id, concept_id)
 
 
 @router.get("/{document_id}/quality", response_model=QualityReportOut)

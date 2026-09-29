@@ -33,7 +33,9 @@ class DocumentStatusOut(StrictModel):
     updated_at: datetime
 
 
-IngestStageName = Literal["parse", "sections", "chunk", "context", "embed", "summaries", "validate"]
+IngestStageName = Literal[
+    "parse", "sections", "chunk", "context", "embed", "summaries", "concepts", "validate"
+]
 
 
 class ReingestIn(StrictModel):

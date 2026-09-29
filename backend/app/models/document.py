@@ -26,7 +26,8 @@ class Document(Base):
         CheckConstraint("status in ('uploaded', 'processing', 'ready', 'failed')", name="status"),
         CheckConstraint(
             "ingest_stage is null or ingest_stage in "
-            "('parse', 'sections', 'chunk', 'context', 'embed', 'summaries', 'validate')",
+            "('parse', 'sections', 'chunk', 'context', 'embed', 'summaries', "
+            "'concepts', 'validate')",
             name="ingest_stage",
         ),
     )
