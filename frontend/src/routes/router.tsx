@@ -12,9 +12,11 @@ import { AuthForm } from "../features/AuthForm";
 import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
 import { ConceptMap } from "../features/ConceptMap";
+import { Notes } from "../features/Notes";
 import { Library } from "../features/Library";
 import { Reader } from "../features/Reader";
 import { ReadyStatus } from "../features/ReadyStatus";
+import { Study } from "../features/Study";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -60,6 +62,22 @@ function ConceptsPage() {
   if (me.isPending) return <p role="status">Loading…</p>;
   if (!me.data) return <Navigate to="/login" />;
   return <ConceptMap documentId={documentId} />;
+}
+
+function NotesPage() {
+  const me = useMe();
+  const { documentId } = notesRoute.useParams();
+  if (me.isPending) return <p role="status">Loading…</p>;
+  if (!me.data) return <Navigate to="/login" />;
+  return <Notes documentId={documentId} />;
+}
+
+function StudyPage() {
+  const me = useMe();
+  const { documentId } = studyRoute.useParams();
+  if (me.isPending) return <p role="status">Loading…</p>;
+  if (!me.data) return <Navigate to="/login" />;
+  return <Study documentId={documentId} />;
 }
 
 function Login() {
@@ -172,6 +190,17 @@ const conceptsRoute = createRoute({
   component: ConceptsPage,
 });
 
+const notesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents/$documentId/notes",
+  component: NotesPage,
+});
+const studyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/documents/$documentId/study",
+  component: StudyPage,
+});
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
@@ -181,6 +210,8 @@ export const router = createRouter({
     resetRoute,
     documentRoute,
     conceptsRoute,
+    notesRoute,
+    studyRoute,
   ]),
 });
 

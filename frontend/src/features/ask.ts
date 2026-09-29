@@ -90,6 +90,7 @@ export async function askDocument(
   documentId: string,
   question: string,
   handlers: AskHandlers,
+  mode: "answer" | "tutor" = "answer",
 ): Promise<void> {
   const url = `${window.location.origin}/api/v1/documents/${documentId}/ask`;
   const post = () =>
@@ -100,7 +101,7 @@ export async function askDocument(
         "Content-Type": "application/json",
         "X-CSRF-Token": readCsrfToken() ?? "",
       },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, mode }),
     });
 
   let res = await post();

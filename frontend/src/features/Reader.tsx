@@ -23,6 +23,7 @@ export function Reader({ documentId }: { documentId: string }) {
   const [citations, setCitations] = useState<AskCitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
+  const [tutor, setTutor] = useState(false);
   const [focusSection, setFocusSection] = useState<string | null>(null);
 
   const doc = useQuery({
@@ -57,21 +58,26 @@ export function Reader({ documentId }: { documentId: string }) {
     setCitations([]);
     setError(null);
     setStatus("starting");
-    await askDocument(documentId, q, {
-      onStatus: (stage) => setStatus(stage),
-      onSources: (items) => setSources(items),
-      onToken: (text) => setAnswer((prev) => prev + text),
-      onCitations: (items) => setCitations(items),
-      onDone: () => {
-        setStatus(null);
-        setAsking(false);
+    await askDocument(
+      documentId,
+      q,
+      {
+        onStatus: (stage) => setStatus(stage),
+        onSources: (items) => setSources(items),
+        onToken: (text) => setAnswer((prev) => prev + text),
+        onCitations: (items) => setCitations(items),
+        onDone: () => {
+          setStatus(null);
+          setAsking(false);
+        },
+        onError: (_code, detail) => {
+          setError(detail);
+          setStatus(null);
+          setAsking(false);
+        },
       },
-      onError: (_code, detail) => {
-        setError(detail);
-        setStatus(null);
-        setAsking(false);
-      },
-    });
+      tutor ? "tutor" : "answer",
+    );
   }
 
   if (doc.isPending) return <p role="status">Loading…</p>;
@@ -97,6 +103,14 @@ export function Reader({ documentId }: { documentId: string }) {
             >
               Concepts
             </Link>
+            {" · "}
+            <Link to="/documents/$documentId/notes" params={{ documentId }} className="underline">
+              Notes
+            </Link>
+            {" · "}
+            <Link to="/documents/$documentId/study" params={{ documentId }} className="underline">
+              Study
+            </Link>
           </>
         )}
       </p>
@@ -113,6 +127,10 @@ export function Reader({ documentId }: { documentId: string }) {
           disabled={asking || doc.data.status !== "ready"}
           onChange={(e) => setQuestion(e.target.value)}
         />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={tutor} onChange={(e) => setTutor(e.target.checked)} />
+          Tutor mode (guide me instead of answering directly)
+        </label>
         <button
           type="submit"
           className="underline disabled:opacity-50"
