@@ -10,6 +10,8 @@ FROM python:3.12-slim
 RUN useradd --create-home --uid 10001 app
 WORKDIR /app
 COPY --from=build /app /app
+# LocalFileStorage creates STORAGE_ROOT at import; app user must own it.
+RUN mkdir -p /app/var/storage && chown -R app:app /app/var
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 USER app
 EXPOSE 8000
