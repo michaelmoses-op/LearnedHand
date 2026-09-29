@@ -62,6 +62,17 @@ kept. `GET /api/v1/documents/{id}/quality` returns the parse quality report (sco
 counts). PDFs are extracted in a memory/CPU-limited child process; scanned (image-only) PDFs are
 rejected because OCR is not supported.
 
+## Concepts, routing and the agentic loop (Phase 4)
+
+Run `make migrate` (adds migration 0009), then `POST /api/v1/documents/{id}/reingest` with an
+empty body for existing books: it resumes at the stale `concepts` stage. The book page then links
+to **Concepts**, an interactive concept × section heat map with a per-concept trajectory; only
+concepts and sections up to your reading progress appear, and a section's note appears once you
+finish it. Live asks classify the question (factual / thematic / concept / other) and choose a
+retrieval strategy (`ROUTING_ENABLED`, default on). `RETRIEVAL_MAX_ITERATIONS` (1–3, default 1)
+turns on the gap-check loop that may run follow-up searches, each still limited to what you have
+read. Both cost extra small LLM calls (stages `route`, `gapcheck` in `llm_calls`).
+
 ## Evals
 
 `make eval` ingests the built-in synthetic demo book, runs every config in `evals/configs/` over

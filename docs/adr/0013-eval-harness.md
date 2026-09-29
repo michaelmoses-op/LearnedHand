@@ -11,8 +11,7 @@ Retrieval choices (flat vs hierarchical, prefixes, hybrid vs vector, rerank) nee
 
 - Package `evals/` at the repo root; it calls the same `RetrievalPipeline` and prompt builder as
   the app, so a config is exactly what production would run. Configs are YAML validated by the
-  `RetrievalConfig` schema (unknown keys are errors; `max_iterations > 1` is rejected until the
-  Phase 4 agentic loop).
+  `RetrievalConfig` schema (unknown keys are errors; `max_iterations` is 1–3, see ADR 0015).
 - Questions identify gold passages by text snippet, not chunk id, so results survive re-chunking.
   `forbidden_snippets` gives a content-based spoiler check independent of the ordinal gate.
 - Metrics: recall@k, MRR, per-stage recall (incl. broad→section), context and judged answer

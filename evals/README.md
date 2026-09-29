@@ -34,7 +34,7 @@ retrieval settings, not real-world quality.
   (`corpus.py`); copy `questions/example.yaml.template` to add questions about an EPUB you own.
   Gold passages are identified by a text snippet, so they survive re-chunking.
 - `configs/*.yaml` — one retrieval strategy each (`schema.py`: `RetrievalConfig` fields +
-  `reranker`). Add a file to add a row to the table. `max_iterations > 1` (agentic loop) is Phase 4.
+  `reranker`). Add a file to add a row to the table. `retrieval.max_iterations` (1–3) enables the agentic gap-check loop and `route: true` classifies each question and picks a strategy, exactly like live asks (ADR 0015); the table reports average iterations.
 - `prompts/judge.md` — **human-owned** judge prompt baseline.
 
 ## Limits
