@@ -231,7 +231,7 @@ async def ask_document(
     async def events() -> AsyncIterator[bytes]:
         try:
             async for ev in AskService(db, auth, settings).ask_stream(
-                document_id=document_id, question=body.question, limit=body.limit
+                document_id=document_id, question=body.question, limit=body.limit, mode=body.mode
             ):
                 yield _sse(ev.event, ev.data)
             await db.commit()

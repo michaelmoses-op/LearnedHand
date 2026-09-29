@@ -242,6 +242,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/flashcards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Flashcards */
+        get: operations["list_flashcards_api_v1_documents__document_id__flashcards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/flashcards/{card_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Flashcard */
+        post: operations["review_flashcard_api_v1_documents__document_id__flashcards__card_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description Notes and highlights up to your reading progress; `q` is a full-text search.
+         */
+        get: operations["list_notes_api_v1_documents__document_id__notes_get"];
+        put?: never;
+        /** Create Note */
+        post: operations["create_note_api_v1_documents__document_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Note */
+        delete: operations["delete_note_api_v1_documents__document_id__notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Note */
+        patch: operations["update_note_api_v1_documents__document_id__notes__note_id__patch"];
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/progress": {
         parameters: {
             query?: never;
@@ -270,6 +343,40 @@ export interface paths {
         get: operations["get_quality_report_api_v1_documents__document_id__quality_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Quiz */
+        get: operations["list_quiz_api_v1_documents__document_id__quiz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/quiz/{question_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Quiz */
+        post: operations["answer_quiz_api_v1_documents__document_id__quiz__question_id__answer_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -330,6 +437,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/study/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Study Material
+         * @description Flashcards or quiz questions from what you have already read (most recent passages).
+         */
+        post: operations["generate_study_material_api_v1_documents__document_id__study_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -376,6 +503,20 @@ export interface components {
              */
             status: string;
         };
+        /** AnswerIn */
+        AnswerIn: {
+            /** Choice */
+            choice: number;
+        };
+        /** AnswerOut */
+        AnswerOut: {
+            /** Answer Index */
+            answer_index: number;
+            /** Correct */
+            correct: boolean;
+            /** Explanation */
+            explanation: string;
+        };
         /** AskIn */
         AskIn: {
             /**
@@ -383,6 +524,12 @@ export interface components {
              * @default 8
              */
             limit: number;
+            /**
+             * Mode
+             * @default answer
+             * @enum {string}
+             */
+            mode: "answer" | "tutor";
             /** Question */
             question: string;
         };
@@ -495,6 +642,61 @@ export interface components {
              */
             email: string;
         };
+        /** FlashcardListOut */
+        FlashcardListOut: {
+            /** Items */
+            items: components["schemas"]["FlashcardOut"][];
+        };
+        /** FlashcardOut */
+        FlashcardOut: {
+            /** Back */
+            back: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Front */
+            front: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interval Days */
+            interval_days: number;
+            /** Reps */
+            reps: number;
+            /** Source Ordinal */
+            source_ordinal: number;
+        };
+        /** GenerateIn */
+        GenerateIn: {
+            /**
+             * Count
+             * @default 5
+             */
+            count: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "flashcards" | "quiz";
+            /** Section Id */
+            section_id?: string | null;
+        };
+        /** GenerateOut */
+        GenerateOut: {
+            /** Created */
+            created: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "flashcards" | "quiz";
+            /** Skipped */
+            skipped: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -509,6 +711,63 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** NoteIn */
+        NoteIn: {
+            /** Anchor Ordinal */
+            anchor_ordinal?: number | null;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Kind
+             * @default note
+             * @enum {string}
+             */
+            kind: "note" | "highlight";
+            /** Quote */
+            quote?: string | null;
+        };
+        /** NoteListOut */
+        NoteListOut: {
+            /** Items */
+            items: components["schemas"]["NoteOut"][];
+        };
+        /** NoteOut */
+        NoteOut: {
+            /** Anchor Ordinal */
+            anchor_ordinal: number;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "note" | "highlight";
+            /** Quote */
+            quote: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** NoteUpdate */
+        NoteUpdate: {
+            /** Body */
+            body: string;
         };
         /** PasswordResetConfirm */
         PasswordResetConfirm: {
@@ -544,10 +803,39 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** QuizListOut */
+        QuizListOut: {
+            /** Items */
+            items: components["schemas"]["QuizQuestionOut"][];
+        };
+        /** QuizQuestionOut */
+        QuizQuestionOut: {
+            /** Choices */
+            choices: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Question */
+            question: string;
+            /** Source Ordinal */
+            source_ordinal: number;
+            /** Times Answered */
+            times_answered: number;
+        };
         /** ReingestIn */
         ReingestIn: {
             /** From Stage */
             from_stage?: ("parse" | "sections" | "chunk" | "context" | "embed" | "summaries" | "concepts" | "validate") | null;
+        };
+        /** ReviewIn */
+        ReviewIn: {
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "again" | "hard" | "good" | "easy";
         };
         /** SectionAxisOut */
         SectionAxisOut: {
@@ -1112,6 +1400,212 @@ export interface operations {
             };
         };
     };
+    list_flashcards_api_v1_documents__document_id__flashcards_get: {
+        parameters: {
+            query?: {
+                due?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlashcardListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_flashcard_api_v1_documents__document_id__flashcards__card_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                card_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlashcardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notes_api_v1_documents__document_id__notes_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                kind?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_note_api_v1_documents__document_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_api_v1_documents__document_id__notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_note_api_v1_documents__document_id__notes__note_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     put_progress_api_v1_documents__document_id__progress_put: {
         parameters: {
             query?: never;
@@ -1165,6 +1659,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_quiz_api_v1_documents__document_id__quiz_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_quiz_api_v1_documents__document_id__quiz__question_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerOut"];
                 };
             };
             /** @description Validation Error */
@@ -1262,6 +1825,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_study_material_api_v1_documents__document_id__study_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateOut"];
                 };
             };
             /** @description Validation Error */

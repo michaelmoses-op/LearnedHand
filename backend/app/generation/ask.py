@@ -20,6 +20,7 @@ from app.generation.citations import SourceRef, verify_citations
 from app.llm.base import ChatMessage
 from app.llm.factory import build_llm
 from app.models.chunk import Chunk
+from app.prompts import load_prompt
 from app.repositories.content import ProgressRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
 from app.retrieval.config import RetrievalConfig
@@ -91,8 +92,10 @@ def _sources_from_chunks(chunks: list[RetrievedChunk]) -> list[SourceRef]:
     ]
 
 
-def build_messages(*, question: str, chunks: list[RetrievedChunk]) -> list[ChatMessage]:
-    system = load_qa_system_prompt()
+def build_messages(
+    *, question: str, chunks: list[RetrievedChunk], mode: str = "answer"
+) -> list[ChatMessage]:
+    system = load_prompt("tutor") if mode == "tutor" else load_qa_system_prompt()
     parts: list[str] = ["Sources (cite with [n]):"]
     for i, c in enumerate(chunks, start=1):
         prefix = f"{c.context_prefix}\n" if c.context_prefix else ""
@@ -130,6 +133,7 @@ class AskService:
         document_id: uuid.UUID,
         question: str,
         limit: int = 8,
+        mode: str = "answer",
     ) -> AsyncIterator[AskEvent]:
         q = question.strip()
         if not q:
@@ -176,8 +180,8 @@ class AskService:
             },
         )
 
-        yield AskEvent("status", {"stage": "generating"})
-        messages = build_messages(question=q, chunks=chunks)
+        yield AskEvent("status", {"stage": "generating", "mode": mode})
+        messages = build_messages(question=q, chunks=chunks, mode=mode)
         llm = build_llm(
             self._settings, self._session, self._ctx, document_id=document_id, stage="generate"
         )

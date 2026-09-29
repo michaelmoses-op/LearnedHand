@@ -24,18 +24,47 @@ ID_ROUTES = [
     ("PUT", "/api/v1/documents/{document_id}/progress"),
     ("POST", "/api/v1/documents/{document_id}/ask"),
     ("DELETE", "/api/v1/documents/{document_id}"),
+    ("POST", "/api/v1/documents/{document_id}/notes"),
+    ("GET", "/api/v1/documents/{document_id}/notes"),
+    ("PATCH", "/api/v1/documents/{document_id}/notes/{note_id}"),
+    ("DELETE", "/api/v1/documents/{document_id}/notes/{note_id}"),
+    ("POST", "/api/v1/documents/{document_id}/study/generate"),
+    ("GET", "/api/v1/documents/{document_id}/flashcards"),
+    ("POST", "/api/v1/documents/{document_id}/flashcards/{card_id}/review"),
+    ("GET", "/api/v1/documents/{document_id}/quiz"),
+    ("POST", "/api/v1/documents/{document_id}/quiz/{question_id}/answer"),
 ]
 PUBLIC_ID_ROUTES: list[tuple[str, str]] = []
 
 
 def _idor_kwargs(method: str, template: str = "") -> dict[str, Any]:
-    if method == "POST" and template.endswith("/reingest"):
-        return {"json": {}}
+    bodies = {
+        "/reingest": {},
+        "/notes": {"body": "x"},
+        "/generate": {"kind": "quiz"},
+        "/review": {"rating": "good"},
+        "/answer": {"choice": 0},
+    }
+    for suffix, body in bodies.items():
+        if method in ("POST", "PATCH") and template.endswith(suffix):
+            return {"json": body}
+    if method == "PATCH":
+        return {"json": {"body": "x"}}
     if method == "POST":
         return {"json": {"question": "x"}}
     if method == "PUT":
         return {"json": {"max_ordinal": 0}}
     return {}
+
+
+def _fmt(template: str, document_id: object) -> str:
+    return template.format(
+        document_id=document_id,
+        concept_id=uuid.uuid4(),
+        note_id=uuid.uuid4(),
+        card_id=uuid.uuid4(),
+        question_id=uuid.uuid4(),
+    )
 
 
 @pytest.fixture
@@ -61,13 +90,11 @@ async def test_idor_other_users_resource_is_404(
     doc = (
         await client.post("/api/v1/documents", content=EPUB, headers={"X-Filename": "a.epub"})
     ).json()
-    url = template.format(document_id=doc["id"], concept_id=uuid.uuid4())
+    url = _fmt(template, doc["id"])
     kwargs = _idor_kwargs(method, template)
     # B is refused with 404, identical to a resource that never existed.
     r_other = await client_b.request(method, url, **kwargs)
-    r_missing = await client_b.request(
-        method, template.format(document_id=uuid.uuid4(), concept_id=uuid.uuid4()), **kwargs
-    )
+    r_missing = await client_b.request(method, _fmt(template, uuid.uuid4()), **kwargs)
     assert r_other.status_code == r_missing.status_code == 404
     assert r_other.json()["code"] == r_missing.json()["code"] == "not_found"
     # Owner's document untouched (delete by B did nothing).
