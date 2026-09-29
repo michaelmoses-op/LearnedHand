@@ -113,9 +113,7 @@ async def test_vector_and_fts_sql_both_apply_progress_filter(
     epub = make_epub()
     doc_id = uuid.UUID(
         (
-            await client.post(
-                "/api/v1/documents", content=epub, headers={"X-Filename": "sql.epub"}
-            )
+            await client.post("/api/v1/documents", content=epub, headers={"X-Filename": "sql.epub"})
         ).json()["id"]
     )
     assert await process_one(app.state.sessionmaker, "ret-worker")
@@ -147,9 +145,7 @@ async def test_vector_and_fts_sql_both_apply_progress_filter(
         )
 
         if vector_ids:
-            rows = (
-                await session.execute(select(Chunk).where(Chunk.id.in_(vector_ids)))
-            ).scalars()
+            rows = (await session.execute(select(Chunk).where(Chunk.id.in_(vector_ids)))).scalars()
             assert all(c.ordinal <= gate for c in rows)
         if fts_ids:
             rows = (await session.execute(select(Chunk).where(Chunk.id.in_(fts_ids)))).scalars()
@@ -178,9 +174,7 @@ async def test_retrieval_cannot_see_other_users_chunks(
     epub = make_epub(title="Private")
     doc_a = uuid.UUID(
         (
-            await client.post(
-                "/api/v1/documents", content=epub, headers={"X-Filename": "a.epub"}
-            )
+            await client.post("/api/v1/documents", content=epub, headers={"X-Filename": "a.epub"})
         ).json()["id"]
     )
     assert await process_one(app.state.sessionmaker, "w")
