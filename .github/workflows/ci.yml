@@ -1,0 +1,116 @@
+name: ci
+on:
+  push:
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql+asyncpg://app_user:app_user_dev@localhost:5432/app_dev
+  MIGRATION_DATABASE_URL: postgresql+asyncpg://app_owner:app_owner_dev@localhost:5432/app_dev
+  TEST_DATABASE_URL: postgresql+asyncpg://app_user:app_user_dev@localhost:5432/app_test
+  TEST_MIGRATION_DATABASE_URL: postgresql+asyncpg://app_owner:app_owner_dev@localhost:5432/app_test
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      # TODO(before first push): pin third-party actions to commit SHAs.
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: PGADMIN_URL=postgresql://postgres:postgres@localhost:5432/postgres bash scripts/setup_db.sh
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run ruff check . && uv run ruff format --check .
+        working-directory: backend
+      - run: uv run mypy
+        working-directory: backend
+      - run: uv run bandit -q -r app
+        working-directory: backend
+      - run: uv run alembic upgrade head
+        working-directory: backend
+      - run: uv run pytest --cov --cov-report=term-missing
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  api-client-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: make gen-api
+      - run: git diff --exit-code -- frontend/src/api/schema.d.ts frontend/openapi.json
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: uv sync --frozen && uv run pip-audit
+        working-directory: backend
+      - run: npm audit --audit-level=high
+        working-directory: frontend
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: PGADMIN_URL=postgresql://postgres:postgres@localhost:5432/postgres bash scripts/setup_db.sh
+      - run: docker build -t lh-api backend
+      - run: docker build -t lh-web frontend
+      - name: smoke test /readyz
+        run: |
+          docker run -d --name api --network host \
+            -e DATABASE_URL="$DATABASE_URL" lh-api
+          for i in $(seq 1 30); do
+            curl -fsS localhost:8000/readyz && exit 0; sleep 1
+          done
+          docker logs api; exit 1
