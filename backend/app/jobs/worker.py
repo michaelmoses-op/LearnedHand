@@ -30,6 +30,7 @@ STALE_RUNNING = timedelta(minutes=15)
 
 async def process_one(sessionmaker: async_sessionmaker[AsyncSession], worker_id: str) -> bool:
     """Claim and run at most one job. Returns True if a job was claimed."""
+    register_builtin_handlers()
     log = get_logger("worker")
     async with sessionmaker() as session:
         job = await claim_next(session, worker_id)

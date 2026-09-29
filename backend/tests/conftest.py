@@ -115,7 +115,10 @@ def settings(test_urls: tuple[str, str], tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-async def app(settings: Settings) -> AsyncIterator[FastAPI]:
+async def app(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[FastAPI]:
+    # Worker handlers call get_settings(); point them at the test Settings (same storage root).
+    monkeypatch.setattr("app.core.config.get_settings", lambda: settings)
+    monkeypatch.setattr("app.jobs.handlers.get_settings", lambda: settings)
     application = create_app(settings)
     application.state.mailer = CapturingMailer()
     async with application.router.lifespan_context(application):

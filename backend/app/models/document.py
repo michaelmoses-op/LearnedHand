@@ -23,6 +23,11 @@ class Document(Base):
         UniqueConstraint("user_id", "file_hash"),
         CheckConstraint("format in ('epub', 'pdf')", name="format"),
         CheckConstraint("status in ('uploaded', 'processing', 'ready', 'failed')", name="status"),
+        CheckConstraint(
+            "ingest_stage is null or ingest_stage in "
+            "('parse', 'sections', 'chunk', 'context', 'embed')",
+            name="ingest_stage",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -38,6 +43,7 @@ class Document(Base):
     file_size: Mapped[int] = mapped_column(BigInteger)
     storage_key: Mapped[str] = mapped_column(String(100), unique=True)
     status: Mapped[str] = mapped_column(String(20), server_default=text("'uploaded'"))
+    ingest_stage: Mapped[str | None] = mapped_column(String(20))
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")

@@ -14,6 +14,7 @@ EPUB = b"PK\x03\x04" + b"authz-" * 20
 # The completeness test below fails if a new ID-bearing route is added without an entry.
 ID_ROUTES = [
     ("GET", "/api/v1/documents/{document_id}"),
+    ("GET", "/api/v1/documents/{document_id}/status"),
     ("DELETE", "/api/v1/documents/{document_id}"),
 ]
 PUBLIC_ID_ROUTES: list[tuple[str, str]] = []
@@ -64,6 +65,7 @@ async def test_list_only_shows_own_documents(client: AsyncClient, client_b: Asyn
         ("GET", "/api/v1/documents"),
         ("POST", "/api/v1/documents"),
         ("GET", f"/api/v1/documents/{uuid.uuid4()}"),
+        ("GET", f"/api/v1/documents/{uuid.uuid4()}/status"),
         ("DELETE", f"/api/v1/documents/{uuid.uuid4()}"),
         ("GET", "/api/v1/auth/me"),
     ],

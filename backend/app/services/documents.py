@@ -20,6 +20,7 @@ from app.core.errors import (
 )
 from app.models import Document
 from app.repositories.documents import DocumentRepository
+from app.repositories.jobs import JobRepository
 from app.storage.base import Storage
 from app.storage.local import new_key
 
@@ -130,7 +131,14 @@ class DocumentService:
         except IntegrityError as exc:
             await self.storage.delete(key)
             raise ConflictError("Concurrent upload of the same file") from exc
+        # Kick off ingest (idempotent stages). Duplicate content returns early above.
+        await JobRepository(self.session, self.ctx).enqueue(
+            kind="ingest", document_id=doc.id, stage="pending"
+        )
         return doc, True
+
+    async def status(self, document_id: uuid.UUID) -> Document | None:
+        return await self.repo.get(document_id)
 
     async def delete(self, document_id: uuid.UUID) -> bool:
         doc = await self.repo.delete(document_id)
