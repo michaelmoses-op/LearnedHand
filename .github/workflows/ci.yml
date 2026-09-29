@@ -35,15 +35,18 @@ jobs:
       - run: PGADMIN_URL=postgresql://postgres:postgres@localhost:5432/postgres bash scripts/setup_db.sh
       - run: uv sync --frozen
         working-directory: backend
-      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run ruff check . ../evals && uv run ruff format --check . ../evals
         working-directory: backend
       - run: uv run mypy
         working-directory: backend
-      - run: uv run bandit -q -r app
+      - run: uv run bandit -q -r app ../evals
         working-directory: backend
       - run: uv run alembic upgrade head
         working-directory: backend
       - run: uv run pytest --cov --cov-report=term-missing
+        working-directory: backend
+      # Smoke: the eval harness runs end to end (fake provider) and prints a comparison table.
+      - run: PYTHONPATH=.. uv run python -m evals.run
         working-directory: backend
 
   frontend:

@@ -305,6 +305,61 @@
         "title": "ProgressOut",
         "type": "object"
       },
+      "QualityReportOut": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          }
+        },
+        "required": [
+          "document_id",
+          "report"
+        ],
+        "title": "QualityReportOut",
+        "type": "object"
+      },
+      "ReingestIn": {
+        "additionalProperties": false,
+        "properties": {
+          "from_stage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "parse",
+                  "sections",
+                  "chunk",
+                  "context",
+                  "embed",
+                  "summaries",
+                  "validate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Stage"
+          }
+        },
+        "title": "ReingestIn",
+        "type": "object"
+      },
       "SectionListOut": {
         "additionalProperties": false,
         "properties": {
@@ -1030,6 +1085,103 @@
           }
         },
         "summary": "Put Progress",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/quality": {
+      "get": {
+        "operationId": "get_quality_report_api_v1_documents__document_id__quality_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quality Report",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}/reingest": {
+      "post": {
+        "description": "Re-run ingestion from a stage (default: first stale stage). Keeps reading progress.",
+        "operationId": "reingest_document_api_v1_documents__document_id__reingest_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReingestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reingest Document",
         "tags": [
           "documents"
         ]

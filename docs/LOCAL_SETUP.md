@@ -40,16 +40,41 @@ cd frontend && npm run dev
 
 ## Other commands
 
-`make test | lint | format | typecheck | migrate | gen-api | db-reset`.
+`make test | lint | format | typecheck | migrate | gen-api | db-reset | eval | compare`.
 After changing API routes or schemas, run `make gen-api` and commit the regenerated client
 (`frontend/openapi.json`, `frontend/src/api/schema.d.ts`); CI fails if it is stale.
 
 Tests use the fake LLM provider and the native `app_test` database.
+
+## Using a real LLM provider (OpenAI)
+
+Nothing is billed until you opt in. In `.env` set `LLM_PROVIDER=openai`, `LLM_API_KEY=...`,
+`LLM_MODEL=...` and `EMBEDDING_MODEL=text-embedding-3-small` (see `.env.example`), then restart
+`make dev` (honcho reads `.env` once at start). `LLM_DAILY_TOKEN_CAP` (default 5M tokens/user/day)
+stops runaway spend. Embeddings are 1536-d; documents ingested with the fake provider must be
+re-ingested after switching (`POST /api/v1/documents/{id}/reingest`).
+
+## Re-ingesting and the parsing quality report
+
+`POST /api/v1/documents/{id}/reingest` re-runs ingestion from a stage (`{"from_stage": "summaries"}`)
+or, with an empty body, from the first stage whose recorded version is stale. Reading progress is
+kept. `GET /api/v1/documents/{id}/quality` returns the parse quality report (score, warnings,
+counts). PDFs are extracted in a memory/CPU-limited child process; scanned (image-only) PDFs are
+rejected because OCR is not supported.
+
+## Evals
+
+`make eval` ingests the built-in synthetic demo book, runs every config in `evals/configs/` over
+`evals/questions/*.yaml`, and prints a comparison table (`make compare` re-prints the latest).
+It works with the fake provider, so it is free and offline; for real numbers point it at OpenAI
+(`LLM_PROVIDER=openai`) and, for the cross-encoder reranker, `uv sync --extra rerank`.
+See `evals/README.md` for adding your own questions and configs.
 
 ## Troubleshooting
 
 **`pgvector is not installed`** (from setup_db.sh): `sudo apt install postgresql-16-pgvector`, then re-run `make setup`.
 **`extension "vector" is not available`** on a different Postgres major: install the matching `postgresql-NN-pgvector`.
 **`Cannot connect to PostgreSQL as an admin`**: check `pg_lsclusters`; start with `sudo pg_ctlcluster 16 main start` (or `sudo service postgresql start` on WSL2).
+**`relation "summaries" / "eval_runs" does not exist`**: run `make migrate` (migrations 0006–0008 change the embedding column to 1536-d; existing dev documents are marked for re-ingest).
 **`Cannot reach the test database`** when running pytest: run `make setup`, and confirm `TEST_DATABASE_URL` and `TEST_MIGRATION_DATABASE_URL` in `.env`.
 **`password authentication failed`**: the role passwords changed; re-run `scripts/setup_db.sh` and update `.env`.

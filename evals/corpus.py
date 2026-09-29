@@ -10,7 +10,7 @@ from __future__ import annotations
 import io
 import random
 import zipfile
-from xml.sax.saxutils import escape
+from html import escape
 
 DEMO_TITLE = "The Chronicle of Saltmere"
 
@@ -138,7 +138,8 @@ _CHAPTERS: list[tuple[str, list[str], list[str]]] = [
 
 def demo_chapters() -> list[tuple[str, str]]:
     """(title, body) per chapter; fact paragraphs are interleaved with filler deterministically."""
-    rng = random.Random(1611)  # noqa: S311 - deterministic fixture, not security
+    # Deterministic fixture RNG (not security-sensitive).
+    rng = random.Random(1611)  # noqa: S311  # nosec B311
     out: list[tuple[str, str]] = []
     for title, facts, filler in _CHAPTERS:
         paragraphs: list[str] = []

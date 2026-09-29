@@ -219,6 +219,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{document_id}/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quality Report */
+        get: operations["get_quality_report_api_v1_documents__document_id__quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/reingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reingest Document
+         * @description Re-run ingestion from a stage (default: first stale stage). Keeps reading progress.
+         */
+        post: operations["reingest_document_api_v1_documents__document_id__reingest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/sections": {
         parameters: {
             query?: never;
@@ -414,6 +451,23 @@ export interface components {
             document_id: string;
             /** Max Ordinal */
             max_ordinal: number;
+        };
+        /** QualityReportOut */
+        QualityReportOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Report */
+            report: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** ReingestIn */
+        ReingestIn: {
+            /** From Stage */
+            from_stage?: ("parse" | "sections" | "chunk" | "context" | "embed" | "summaries" | "validate") | null;
         };
         /** SectionListOut */
         SectionListOut: {
@@ -889,6 +943,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quality_report_api_v1_documents__document_id__quality_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reingest_document_api_v1_documents__document_id__reingest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReingestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentStatusOut"];
                 };
             };
             /** @description Validation Error */
