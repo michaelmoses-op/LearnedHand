@@ -73,6 +73,15 @@ retrieval strategy (`ROUTING_ENABLED`, default on). `RETRIEVAL_MAX_ITERATIONS` (
 turns on the gap-check loop that may run follow-up searches, each still limited to what you have
 read. Both cost extra small LLM calls (stages `route`, `gapcheck` in `llm_calls`).
 
+## Notes, study and tutor mode (Phase 5)
+
+Run `make migrate` (migration 0010). The book page links to **Notes** (notes and highlights with
+full-text search), **Study** (spaced-repetition flashcards and multiple-choice quizzes generated
+from what you have read so far) and has a **Tutor mode** checkbox next to the question box (the
+tutor guides you with hints instead of answering directly). Everything is limited to your current
+reading position: set your progress with `PUT /api/v1/documents/{id}/progress`, and material from
+later chapters disappears again if you move it back. Generation uses the `study` LLM stage.
+
 ## Evals
 
 `make eval` ingests the built-in synthetic demo book, runs every config in `evals/configs/` over
