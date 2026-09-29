@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -5,6 +6,8 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+DEV_ORIGIN_PATTERN = r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
+_DEV_ORIGIN = re.compile(DEV_ORIGIN_PATTERN)
 _ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -44,6 +47,13 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
+
+    def origin_allowed(self, origin: str) -> bool:
+        """Explicit allowlist; in `dev` only, any localhost/127.0.0.1 port (Vite may pick a
+        different port). Never relaxed outside dev."""
+        if origin in self.cors_origins:
+            return True
+        return self.environment == "dev" and bool(_DEV_ORIGIN.match(origin))
 
 
 @lru_cache

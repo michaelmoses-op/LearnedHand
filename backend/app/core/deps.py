@@ -73,7 +73,7 @@ def origin_check(request: Request, settings: SettingsDep) -> None:
     if request.method in SAFE_METHODS:
         return
     origin = request.headers.get("origin")
-    if origin is not None and origin not in settings.cors_origins:
+    if origin is not None and not settings.origin_allowed(origin):
         raise CsrfError(f"Origin not allowed: {origin[:100]} (add it to CORS_ORIGINS)")
 
 

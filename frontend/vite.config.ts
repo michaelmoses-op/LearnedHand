@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    strictPort: true, // fail loudly if busy: the API's origin allowlist expects this port
     // Same-origin in dev so cookie auth (Phase 1) works without CORS.
     proxy: {
       "/api": "http://localhost:8000",
