@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     context_prefix_mode: Literal["title", "llm"] = "title"
     store_plain_embeddings: bool = False  # body-only vectors, for the prefix ablation
     retrieval_hierarchical: bool = False
+    retrieval_max_iterations: int = Field(default=1, ge=1, le=3)  # >1 = agentic gap-check loop
+    routing_enabled: bool = True  # classify questions and pick a retrieval strategy
     retrieval_broad_k: int = Field(default=5, ge=1, le=50)
     storage_root: Path = Path("./var/storage")
 

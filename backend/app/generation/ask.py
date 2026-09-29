@@ -23,7 +23,7 @@ from app.models.chunk import Chunk
 from app.repositories.content import ProgressRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
 from app.retrieval.config import RetrievalConfig
-from app.retrieval.pipeline import RetrievalPipeline
+from app.retrieval.orchestrator import RetrievalOrchestrator
 from app.retrieval.types import RetrievalResult, RetrievedChunk
 
 log = get_logger("generation.ask")
@@ -146,13 +146,18 @@ class AskService:
             raise DocumentNotReadyError("Document is not ready for questions")
 
         yield AskEvent("status", {"stage": "retrieving"})
-        pipeline = RetrievalPipeline(
+        orchestrator = RetrievalOrchestrator(
             self._session, self._ctx, self._settings, document_id=document_id
         )
         config = self._config or RetrievalConfig.from_settings(self._settings)
         config = config.model_copy(update={"final_k": limit})
-        result = await pipeline.run(document_id=document_id, query=q, config=config)
+        # Evals inject a config and get exactly that strategy; live asks are routed.
+        result = await orchestrator.run(
+            query=q, config=config, route=self._settings.routing_enabled and self._config is None
+        )
         self.last_retrieval = result
+        if result.route is not None:
+            yield AskEvent("status", {"stage": "routed", "route": result.route})
         chunks = result.chunks
         sources = _sources_from_chunks(chunks)
         yield AskEvent(

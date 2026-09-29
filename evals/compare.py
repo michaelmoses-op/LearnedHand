@@ -40,6 +40,7 @@ STAGE_COLUMNS: list[tuple[str, str, bool | None, str]] = [
     ("fused pool", "recall_fuse", True, "{:.2f}"),
     ("rerank pool", "recall_rerank", True, "{:.2f}"),
     ("retrieval p50 ms", "retrieval_ms_p50", False, "{:.1f}"),
+    ("avg iterations", "iterations", None, "{:.2f}"),
 ]
 
 

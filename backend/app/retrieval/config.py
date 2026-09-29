@@ -29,8 +29,8 @@ class RetrievalConfig(BaseModel):
     final_k: int = Field(default=8, ge=1, le=50)
     broad_k: int = Field(default=5, ge=1, le=50)  # summaries selected by the broad pass
     rrf_k: int = Field(default=60, ge=1)
-    # >1 needs the agentic gap-check loop (Phase 4); rejected until then.
-    max_iterations: int = Field(default=1, ge=1, le=1)
+    # >1 enables the agentic gap-check loop (extra retrieval passes on follow-up queries).
+    max_iterations: int = Field(default=1, ge=1, le=3)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> RetrievalConfig:
@@ -38,4 +38,5 @@ class RetrievalConfig(BaseModel):
             hierarchical=settings.retrieval_hierarchical,
             rerank=settings.reranker != "none",
             broad_k=settings.retrieval_broad_k,
+            max_iterations=settings.retrieval_max_iterations,
         )

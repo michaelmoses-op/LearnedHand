@@ -59,6 +59,8 @@ class EvalConfig(BaseModel):
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     # Rerank implementation for this config (`fake` = lexical, CI-safe; `cross_encoder` = real).
     reranker: Literal["none", "fake", "cross_encoder"] = "none"
+    # Classify each question and pick a strategy per label (what live asks do by default).
+    route: bool = False
 
 
 def load_questions(path: Path) -> QuestionFile:

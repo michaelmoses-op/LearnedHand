@@ -45,6 +45,8 @@ class RetrievalResult:
     chunks: list[RetrievedChunk]
     stages: list[StageTrace]
     progress: int
+    iterations: int = 1  # retrieval passes (agentic loop)
+    route: str | None = None  # query class chosen by the router, if routing was on
 
     @property
     def total_ms(self) -> float:

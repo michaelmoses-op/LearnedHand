@@ -104,7 +104,70 @@ def _special_structured(
     user = next((m.content for m in reversed(messages) if m.role == "user"), "")
     if "concepts" in props:
         return {"concepts": _fake_concepts(user)}
+    if "label" in props:
+        return _fake_classification(user)
+    if "sufficient" in props:
+        return _fake_gap_verdict(user)
     return None
+
+
+_QUESTION = re.compile(r"<question>\n?(.*?)\n?</question>", re.DOTALL)
+_PASSAGE = re.compile(r"<passage[^>]*>\n?(.*?)\n?</passage>", re.DOTALL)
+_CONCEPT_CUES = ("concept of", "idea of", "notion of", "develop", "evolve", "trajectory", "term ")
+_THEME_CUES = (
+    "why ",
+    "theme",
+    "overall",
+    "main argument",
+    "summar",
+    "compare",
+    "relationship",
+    "significance",
+    "throughout",
+    "in general",
+)
+_COVERAGE_OK = 0.75
+
+
+def _question_of(user: str) -> str:
+    m = _QUESTION.search(user)
+    return m.group(1) if m else user
+
+
+def _fake_classification(user: str) -> dict[str, Any]:
+    q = _question_of(user).lower()
+    if any(c in q for c in _CONCEPT_CUES):
+        m = re.search(
+            r"(?:concept|idea|notion|term) of ([a-z][a-z -]{1,40}?)"
+            r"(?:[?.,]| in | across | through| develop| evolve|$)",
+            q,
+        )
+        return {"label": "concept", "concept": m.group(1).strip() if m else None}
+    if any(c in q for c in _THEME_CUES):
+        return {"label": "thematic", "concept": None}
+    return {"label": "factual", "concept": None}
+
+
+def _content_tokens(text: str) -> set[str]:
+    return {t for t in _WORD.findall(text.lower()) if t not in _STOPWORDS}
+
+
+def _fake_gap_verdict(user: str) -> dict[str, Any]:
+    """Lexical gap check: which question words appear in none of the passages?"""
+    want = _content_tokens(_question_of(user))
+    have: set[str] = set()
+    for body in _PASSAGE.findall(user):
+        have |= _content_tokens(body)
+    if not want:
+        return {"sufficient": True, "missing": "", "follow_up_query": None}
+    missing = sorted(want - have)
+    if 1 - len(missing) / len(want) >= _COVERAGE_OK:
+        return {"sufficient": True, "missing": "", "follow_up_query": None}
+    return {
+        "sufficient": False,
+        "missing": " ".join(missing)[:500],
+        "follow_up_query": " ".join(missing)[:300],
+    }
 
 
 def _fake_concepts(user: str) -> list[dict[str, str]]:

@@ -108,7 +108,10 @@ class RetrievalPipeline:
         query: str,
         config: RetrievalConfig | None = None,
         progress: int | None = None,
+        scope_sections: Sequence[uuid.UUID] | None = None,
     ) -> RetrievalResult:
+        """`scope_sections` restricts candidates to those sections (e.g. where a concept appears);
+        it narrows the search but can never widen it past the progress gate."""
         cfg = config or RetrievalConfig.from_settings(self._settings)
         if not query.strip():
             raise RetrievalError("empty_query")
@@ -152,6 +155,10 @@ class RetrievalPipeline:
                     note=note,
                 )
             )
+
+        if scope_sections is not None:
+            only = Chunk.section_id.in_(list(scope_sections))
+            scope = only if scope is None else and_(scope, only)
 
         # -- candidate generation --
         ranked: list[list[uuid.UUID]] = []

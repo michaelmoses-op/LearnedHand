@@ -41,7 +41,7 @@ from app.models.section import Section
 from app.models.user import User
 from app.repositories.content import ChunkRepository, SectionRepository
 from app.repositories.users import UserRepository
-from app.retrieval.pipeline import RetrievalPipeline
+from app.retrieval.orchestrator import RetrievalOrchestrator
 from app.retrieval.types import RetrievalResult
 from app.services.documents import DocumentService
 from app.storage.local import LocalFileStorage
@@ -172,7 +172,9 @@ async def evaluate_config(
         by_id = {c.id: c for c in chunks}
         last_ordinal = max(c.ordinal for c in chunks)
         reranker = build_reranker(settings.model_copy(update={"reranker": cfg.reranker}))
-        pipeline = RetrievalPipeline(s, ctx, settings, document_id=doc_id, reranker=reranker)
+        orchestrator = RetrievalOrchestrator(
+            s, ctx, settings, document_id=doc_id, reranker=reranker
+        )
         gen_llm = build_llm(settings, s, ctx, document_id=doc_id, stage="generate")
         judge_llm = build_llm(settings, s, ctx, document_id=doc_id, stage="judge")
 
@@ -182,8 +184,8 @@ async def evaluate_config(
             if q.expected_chunks and not gold:
                 print(f"  ! {q.id}: no gold passage found within progress — skipped", flush=True)
                 continue
-            result = await pipeline.run(
-                document_id=doc_id, query=q.question, config=cfg.retrieval, progress=progress
+            result = await orchestrator.run(
+                query=q.question, config=cfg.retrieval, progress=progress, route=cfg.route
             )
             row, stages = await _score(
                 q, result, gold, by_id, progress, cfg, settings, gen_llm, judge_llm, judge_model
@@ -236,6 +238,7 @@ async def _score(
         "spoiler_leaks": metrics.contains_any(texts, q.forbidden_snippets)
         + sum(1 for c in result.chunks if c.ordinal > progress),
         "retrieval_ms": result.total_ms,
+        "iterations": result.iterations,
     }
     for stage in result.stages:
         if stage.name in ("vector", "fts", "fuse", "rerank"):

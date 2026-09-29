@@ -1,0 +1,8 @@
+# What live asks do: classify the question, then pick a strategy; plus the gap-check loop.
+description: Query routing (factual/thematic/concept) with agentic gap-check.
+route: true
+retrieval:
+  mode: hybrid
+  final_k: 10
+  broad_k: 3
+  max_iterations: 3

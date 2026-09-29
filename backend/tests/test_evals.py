@@ -83,7 +83,7 @@ def test_schema_rejects_unknown_keys_and_unsupported_iterations() -> None:
     with pytest.raises(ValidationError):
         EvalConfig.model_validate({"name": "x", "retreival": {}})
     with pytest.raises(ValidationError):
-        EvalConfig.model_validate({"name": "x", "retrieval": {"max_iterations": 3}})
+        EvalConfig.model_validate({"name": "x", "retrieval": {"max_iterations": 4}})
     with pytest.raises(ValidationError):
         EvalConfig.model_validate({"name": "bad name!"})
 

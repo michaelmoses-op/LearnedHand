@@ -1,0 +1,6 @@
+# Hybrid retrieval plus the agentic gap-check loop (up to 3 passes).
+description: Flat hybrid + gap-check loop (max 3 iterations).
+retrieval:
+  mode: hybrid
+  final_k: 10
+  max_iterations: 3
