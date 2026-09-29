@@ -21,3 +21,12 @@ class DocumentOut(StrictModel):
 class DocumentPage(StrictModel):
     items: list[DocumentOut]
     next_cursor: str | None = None
+
+
+class DocumentStatusOut(StrictModel):
+    id: uuid.UUID
+    status: str
+    ingest_stage: str | None
+    error: str | None
+    max_ordinal: int | None
+    updated_at: datetime

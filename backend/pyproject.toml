@@ -15,6 +15,9 @@ dependencies = [
   "opentelemetry-sdk>=1.27",
   "argon2-cffi>=25.1.0",
   "pyjwt>=2.15.1",
+  "pgvector>=0.3",
+  "lxml>=5.0",
+  "tiktoken>=0.7",
 ]
 
 [dependency-groups]
@@ -45,7 +48,7 @@ plugins = ["pydantic.mypy"]
 files = ["app", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["alembic.*", "asyncpg.*"]
+module = ["alembic.*", "asyncpg.*", "lxml.*", "tiktoken.*", "pgvector.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

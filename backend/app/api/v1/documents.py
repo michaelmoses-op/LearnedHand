@@ -13,7 +13,8 @@ from app.core.deps import (
     csrf_protect,
 )
 from app.core.errors import NotFoundError, PayloadTooLargeError
-from app.schemas.documents import DocumentOut, DocumentPage
+from app.repositories.content import ProgressRepository
+from app.schemas.documents import DocumentOut, DocumentPage, DocumentStatusOut
 from app.services.documents import DocumentService, decode_cursor, encode_cursor
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(csrf_protect)])
@@ -78,6 +79,24 @@ async def get_document(
     if doc is None:
         raise NotFoundError("Document not found")
     return DocumentOut.model_validate(doc)
+
+
+@router.get("/{document_id}/status", response_model=DocumentStatusOut)
+async def get_document_status(
+    document_id: uuid.UUID, auth: AuthDep, db: AuthDbDep, storage: StorageDep
+) -> DocumentStatusOut:
+    doc = await DocumentService(db, auth, storage).repo.get(document_id)
+    if doc is None:
+        raise NotFoundError("Document not found")
+    progress = await ProgressRepository(db, auth).get(document_id)
+    return DocumentStatusOut(
+        id=doc.id,
+        status=doc.status,
+        ingest_stage=doc.ingest_stage,
+        error=doc.error,
+        max_ordinal=progress.max_ordinal if progress else None,
+        updated_at=doc.updated_at,
+    )
 
 
 @router.delete("/{document_id}", status_code=204)

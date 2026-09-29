@@ -10,7 +10,7 @@ import asyncpg
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.core.deps import AuthContext, set_rls_user
 from app.jobs.handlers import handle_noop, register_builtin_handlers
@@ -84,6 +84,11 @@ async def test_claim_sets_rls_so_only_owner_documents_visible(
         headers={"X-Filename": "b.epub"},
     )
     user_a = await _user_id(client)
+
+    async with app.state.sessionmaker() as session:
+        # Uploads enqueue ingest jobs; clear them so this test claims the noop we create.
+        await session.execute(delete(Job))
+        await session.commit()
 
     async with app.state.sessionmaker() as session:
         await set_rls_user(session, user_a)
