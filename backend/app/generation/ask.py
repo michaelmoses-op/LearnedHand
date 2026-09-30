@@ -265,6 +265,7 @@ async def list_readable_sections(
                 "title": s.title,
                 "body": s.body if readable else None,
                 "readable": readable,
+                "last_chunk_ordinal": s.last_chunk_ordinal,
             }
         )
     return out

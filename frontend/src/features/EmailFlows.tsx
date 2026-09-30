@@ -17,17 +17,26 @@ export function VerifyEmail({ token }: { token: string }) {
       verify.mutate();
     }
   });
-  if (verify.isError) return <p role="alert">{verify.error.message}</p>;
+  if (verify.isError)
+    return (
+      <p role="alert" className="alert">
+        {verify.error.message}
+      </p>
+    );
   if (verify.isSuccess)
     return (
-      <p role="status">
+      <p role="status" className="notice">
         Email verified.{" "}
-        <Link to="/" className="underline">
+        <Link to="/" className="link-action">
           Continue
         </Link>
       </p>
     );
-  return <p role="status">Verifying…</p>;
+  return (
+    <p role="status" className="notice">
+      Verifying…
+    </p>
+  );
 }
 
 export function ResetPassword({ token }: { token: string | undefined }) {
@@ -47,27 +56,29 @@ export function ResetPassword({ token }: { token: string | undefined }) {
       if (error) throw new Error(problemMessage(error, "Reset failed"));
     },
   });
-  const input = "mt-1 block w-full rounded border border-neutral-400 px-3 py-2";
+  const input = "field";
 
   if (token) {
     if (confirm.isSuccess)
       return (
-        <p role="status">
+        <p role="status" className="notice">
           Password updated.{" "}
-          <Link to="/login" className="underline">
+          <Link to="/login" className="link-action">
             Log in
           </Link>
         </p>
       );
     return (
       <form
-        className="space-y-4"
+        className="panel mx-auto max-w-md space-y-4 p-8"
         onSubmit={(e) => {
           e.preventDefault();
           confirm.mutate();
         }}
       >
-        <label htmlFor="new-password">New password (12+ characters)</label>
+        <label htmlFor="new-password" className="label">
+          New password (12+ characters)
+        </label>
         <input
           id="new-password"
           type="password"
@@ -79,24 +90,34 @@ export function ResetPassword({ token }: { token: string | undefined }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {confirm.isError && <p role="alert">{confirm.error.message}</p>}
-        <button type="submit" className="rounded bg-blue-700 px-4 py-2 text-white">
+        {confirm.isError && (
+          <p role="alert" className="alert">
+            {confirm.error.message}
+          </p>
+        )}
+        <button type="submit" className="btn w-full">
           Set password
         </button>
       </form>
     );
   }
   if (request.isSuccess)
-    return <p role="status">If that address has an account, a reset link is on its way.</p>;
+    return (
+      <p role="status" className="notice">
+        If that address has an account, a reset link is on its way.
+      </p>
+    );
   return (
     <form
-      className="space-y-4"
+      className="panel mx-auto max-w-md space-y-4 p-8"
       onSubmit={(e) => {
         e.preventDefault();
         request.mutate();
       }}
     >
-      <label htmlFor="reset-email">Email</label>
+      <label htmlFor="reset-email" className="label">
+        Email
+      </label>
       <input
         id="reset-email"
         type="email"
@@ -107,8 +128,12 @@ export function ResetPassword({ token }: { token: string | undefined }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      {request.isError && <p role="alert">{request.error.message}</p>}
-      <button type="submit" className="rounded bg-blue-700 px-4 py-2 text-white">
+      {request.isError && (
+        <p role="alert" className="alert">
+          {request.error.message}
+        </p>
+      )}
+      <button type="submit" className="btn w-full">
         Send reset link
       </button>
     </form>

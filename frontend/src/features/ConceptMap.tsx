@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ConceptMap as ConceptMapData, ConceptRow } from "./concepts";
 import { useConceptMap, useTrajectory } from "./concepts";
@@ -63,7 +62,7 @@ function HeatRow({
       tabIndex={0}
       aria-label={`${row.name}, in ${row.sections} sections`}
       aria-pressed={active}
-      className="cursor-pointer outline-none focus-visible:opacity-80"
+      className="cursor-pointer outline-none [&:focus-visible>rect:first-child]:stroke-gold [&:focus-visible>rect:first-child]:stroke-2 [&:hover>rect:first-child]:fill-gold/15"
       onClick={() => onSelect(row.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -72,7 +71,14 @@ function HeatRow({
         }
       }}
     >
-      <rect x={0} y={y} width={LABEL_W + data.sections.length * CELL} height={ROW_H} fill="none" />
+      <rect
+        x={0}
+        y={y}
+        width={LABEL_W + data.sections.length * CELL}
+        height={ROW_H}
+        rx={3}
+        fill={active ? "rgb(176 138 60 / 0.18)" : "transparent"}
+      />
       <text x={4} y={y + 17} fontSize={13} fontWeight={active ? 700 : 400} fill="currentColor">
         {row.name.length > 20 ? `${row.name.slice(0, 19)}…` : row.name}
       </text>
@@ -86,9 +92,10 @@ function HeatRow({
             width={CELL - 2}
             height={ROW_H - 4}
             rx={3}
-            fill={cell ? "#4f46e5" : "#e5e5e5"}
+            fill={cell ? "#7b2d26" : "#e6d9b8"}
             fillOpacity={cell ? 0.2 + 0.8 * cell.intensity : 0.5}
-            stroke={active ? "#111" : "none"}
+            stroke={active ? "#2c2216" : "#c9b98f"}
+            strokeWidth={active ? 2 : 1}
           >
             <title>
               {cell
@@ -107,7 +114,12 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
   const q = useTrajectory(documentId, conceptId);
   const map = useConceptMap(documentId);
   if (q.isPending) return <p role="status">Loading trajectory…</p>;
-  if (q.isError) return <p role="alert">{q.error.message}</p>;
+  if (q.isError)
+    return (
+      <p role="alert" className="alert">
+        {q.error.message}
+      </p>
+    );
   const sections = map.data?.sections ?? [];
   const counts = new Map(q.data.points.map((p) => [p.section_id, p.chunks]));
   const max = Math.max(1, ...counts.values());
@@ -119,7 +131,7 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
     return { x, y, s, n: counts.get(s.id) ?? 0 };
   });
   return (
-    <section aria-labelledby="traj-heading" className="mt-6">
+    <section aria-labelledby="traj-heading" className="mt-8 border-t border-rule pt-6">
       <h3 id="traj-heading" className="font-semibold">
         “{q.data.name}” across the book
       </h3>
@@ -132,12 +144,12 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
       >
         <polyline
           fill="none"
-          stroke="#4f46e5"
+          stroke="#7b2d26"
           strokeWidth={2}
           points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
         />
         {pts.map((p) => (
-          <circle key={p.s.id} cx={p.x} cy={p.y} r={4} fill="#4f46e5">
+          <circle key={p.s.id} cx={p.x} cy={p.y} r={4} fill="#7b2d26">
             <title>{`${p.s.title}: ${p.n} passage${p.n === 1 ? "" : "s"}`}</title>
           </circle>
         ))}
@@ -146,10 +158,10 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
         {q.data.points.map((p) => (
           <li key={p.section_id}>
             <span className="font-medium">{p.section_title}</span>{" "}
-            <span className="text-neutral-500">
+            <span className="muted">
               ({p.chunks} passage{p.chunks === 1 ? "" : "s"})
             </span>
-            <p className={p.note ? "" : "text-neutral-500 italic"}>
+            <p className={p.note ? "" : "muted italic"}>
               {p.note ?? "Finish this section to see a note."}
             </p>
           </li>
@@ -164,19 +176,19 @@ export function ConceptMap({ documentId }: { documentId: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <article>
-      <p className="mb-4">
-        <Link to="/documents/$documentId" params={{ documentId }} className="underline">
-          ← Back to book
-        </Link>
-      </p>
-      <h2 className="text-xl font-semibold">Concepts</h2>
-      <p className="mb-4 text-sm text-neutral-600">
-        Only concepts and sections you have reached are shown, so there are no spoilers.
+      <h3 className="text-xl font-semibold">Concepts</h3>
+      <p className="muted mb-4 text-sm">
+        Ideas and how strongly each appears in the sections you have reached. Select a row to see
+        how that concept develops. Nothing beyond your reading position is shown.
       </p>
       {map.isPending && <p role="status">Loading…</p>}
-      {map.isError && <p role="alert">{map.error.message}</p>}
+      {map.isError && (
+        <p role="alert" className="alert">
+          {map.error.message}
+        </p>
+      )}
       {map.data && map.data.concepts.length === 0 && (
-        <p role="status">
+        <p role="status" className="notice">
           No concepts yet. Set your reading progress, and make sure the book has finished
           processing.
         </p>

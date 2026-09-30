@@ -1,1 +1,294 @@
 @import "tailwindcss";
+
+/*
+ * Classic humanities theme: faded marble and yellowed vellum, dark sepia ink, oxblood accents
+ * and antique gold rules. System serif fonts only (no web-font requests).
+ */
+@theme {
+  --font-serif:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman",
+    serif;
+  --font-display:
+    "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  --color-parchment: #f1e8d0;
+  --color-parchment-dark: #e6d9b8;
+  --color-vellum: #fbf6e8;
+  --color-marble: #dcd8cc;
+  --color-ink: #2c2216;
+  --color-ink-soft: #66573f;
+  --color-rule: #c9b98f;
+  --color-burgundy: #7b2d26;
+  --color-burgundy-dark: #5c1f1a;
+  --color-gold: #b08a3c;
+  --color-gold-dark: #8a6a26;
+  --color-laurel: #4b5e3a;
+  --color-danger: #8f1d1d;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-serif);
+    color: var(--color-ink);
+    font-size: 17px;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--color-parchment);
+    /* Faded marble: soft light pools plus faint veining over aged paper. */
+    background-image:
+      radial-gradient(ellipse at 15% 8%, rgb(255 255 255 / 0.6), transparent 55%),
+      radial-gradient(ellipse at 85% 92%, rgb(176 138 60 / 0.16), transparent 60%),
+      repeating-linear-gradient(
+        63deg,
+        transparent 0 170px,
+        rgb(110 100 85 / 0.05) 171px 172px,
+        transparent 173px 340px
+      ),
+      repeating-linear-gradient(
+        -28deg,
+        transparent 0 230px,
+        rgb(110 100 85 / 0.04) 231px 232px,
+        transparent 233px 470px
+      ),
+      linear-gradient(180deg, #f4ecd8, #ecdfc0);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+
+  a {
+    color: var(--color-burgundy);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    color: var(--color-burgundy-dark);
+    text-decoration-thickness: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"],
+  [role="tab"]:not([aria-disabled="true"]),
+  select,
+  summary {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(176 138 60 / 0.35);
+  }
+}
+
+@layer components {
+  /* A page of the book: vellum with a double rule. */
+  .panel {
+    background: var(--color-vellum);
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+    box-shadow:
+      inset 0 0 0 3px var(--color-vellum),
+      inset 0 0 0 4px var(--color-rule),
+      0 10px 24px -14px rgb(70 50 20 / 0.45);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 1px solid var(--color-burgundy-dark);
+    border-radius: 3px;
+    background: var(--color-burgundy);
+    color: var(--color-vellum);
+    padding: 0.5rem 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+    box-shadow: 0 2px 0 var(--color-burgundy-dark);
+    transition:
+      background-color 120ms,
+      transform 80ms,
+      box-shadow 80ms;
+    user-select: none;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--color-burgundy-dark);
+    color: var(--color-vellum);
+    text-decoration: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: none;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .btn-secondary {
+    background: var(--color-vellum);
+    color: var(--color-burgundy);
+    border-color: var(--color-rule);
+    box-shadow: 0 2px 0 var(--color-rule);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-parchment-dark);
+    color: var(--color-burgundy-dark);
+  }
+  .btn-danger {
+    background: var(--color-vellum);
+    color: var(--color-danger);
+    border-color: rgb(143 29 29 / 0.5);
+    box-shadow: 0 2px 0 rgb(143 29 29 / 0.35);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--color-danger);
+    color: var(--color-vellum);
+  }
+  .btn-sm {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  /* Inline text action that still looks clickable. */
+  .link-action {
+    color: var(--color-burgundy);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .link-action:hover {
+    color: var(--color-burgundy-dark);
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-soft);
+  }
+  .field {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--color-rule);
+    border-radius: 3px;
+    background: #fffdf5;
+    padding: 0.55rem 0.75rem;
+    color: var(--color-ink);
+    box-shadow: inset 0 1px 3px rgb(70 50 20 / 0.15);
+  }
+  .field:hover:not(:disabled) {
+    border-color: var(--color-gold-dark);
+  }
+  .field:focus {
+    border-color: var(--color-gold-dark);
+    outline: 3px solid rgb(176 138 60 / 0.45);
+    outline-offset: 0;
+  }
+  .field:disabled {
+    opacity: 0.6;
+    background: var(--color-parchment-dark);
+  }
+
+  .alert {
+    border-left: 4px solid var(--color-danger);
+    background: #f7e4dc;
+    color: #5f1414;
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+  }
+  .notice {
+    border-left: 4px solid var(--color-gold);
+    background: rgb(176 138 60 / 0.12);
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+  }
+  .muted {
+    color: var(--color-ink-soft);
+  }
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-soft);
+  }
+  .rule {
+    border: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-rule), transparent);
+  }
+
+  /* Book-index tabs. The active tab joins the page below it. */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    border-bottom: 2px solid var(--color-rule);
+  }
+  .tab {
+    margin-bottom: -2px;
+    border: 2px solid transparent;
+    border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    background: rgb(230 217 184 / 0.55);
+    padding: 0.55rem 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-soft);
+    border-color: var(--color-rule);
+  }
+  .tab:hover:not([aria-selected="true"]):not([aria-disabled="true"]) {
+    background: var(--color-parchment-dark);
+    color: var(--color-ink);
+  }
+  .tab[aria-selected="true"] {
+    background: var(--color-vellum);
+    color: var(--color-burgundy);
+    box-shadow: inset 0 3px 0 var(--color-burgundy);
+    padding-bottom: calc(0.55rem + 2px);
+  }
+  .tab[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .tabpanel {
+    background: var(--color-vellum);
+    border: 2px solid var(--color-rule);
+    border-top: 0;
+    border-radius: 0 0 3px 3px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 24px -14px rgb(70 50 20 / 0.45);
+  }
+
+  .prose-book {
+    line-height: 1.75;
+    hyphens: auto;
+  }
+  .dropcap::first-letter {
+    float: left;
+    font-family: var(--font-display);
+    font-size: 3.1em;
+    line-height: 0.85;
+    padding: 0.08em 0.1em 0 0;
+    color: var(--color-burgundy);
+  }
+}

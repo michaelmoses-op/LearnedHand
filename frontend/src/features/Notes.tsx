@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useId, useState, type FormEvent } from "react";
 import { useAddNote, useDeleteNote, useNotes } from "./study";
 
@@ -34,76 +33,84 @@ export function Notes({ documentId }: { documentId: string }) {
 
   return (
     <article>
-      <p className="mb-4">
-        <Link to="/documents/$documentId" params={{ documentId }} className="underline">
-          ← Back to book
-        </Link>
-      </p>
-      <h2 className="text-xl font-semibold">Notes and highlights</h2>
-      <p className="mb-4 text-sm text-neutral-600">
+      <h3 className="text-xl font-semibold">Notes and highlights</h3>
+      <p className="muted mb-4 text-sm">
         Notes attach to your current reading position and only show up once you have read that far.
       </p>
 
-      <form className="mb-6 space-y-2" onSubmit={onSubmit}>
-        <label htmlFor={quoteId} className="block font-medium">
+      <form className="mb-8 space-y-3" onSubmit={onSubmit}>
+        <label htmlFor={quoteId} className="label">
           Highlighted passage (optional)
         </label>
         <textarea
           id={quoteId}
-          className="w-full border border-neutral-300 p-2"
+          className="field"
           rows={2}
           value={quote}
           onChange={(e) => setQuote(e.target.value)}
         />
-        <label htmlFor={bodyId} className="block font-medium">
+        <label htmlFor={bodyId} className="label">
           Note
         </label>
         <textarea
           id={bodyId}
-          className="w-full border border-neutral-300 p-2"
+          className="field"
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
         <button
           type="submit"
-          className="underline disabled:opacity-50"
+          className="btn"
           disabled={add.isPending || (!quote.trim() && !body.trim())}
         >
           Save
         </button>
         {add.isError && (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="alert">
             {add.error.message}
           </p>
         )}
       </form>
 
-      <label htmlFor={searchId} className="block font-medium">
+      <label htmlFor={searchId} className="label">
         Search notes
       </label>
       <input
         id={searchId}
         type="search"
-        className="mb-4 w-full border border-neutral-300 p-2"
+        className="field mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
 
       {notes.isPending && <p role="status">Loading…</p>}
-      {notes.isError && <p role="alert">{notes.error.message}</p>}
-      {notes.data && notes.data.length === 0 && <p role="status">No notes yet.</p>}
+      {notes.isError && (
+        <p role="alert" className="alert">
+          {notes.error.message}
+        </p>
+      )}
+      {notes.data && notes.data.length === 0 && (
+        <p role="status" className="notice">
+          No notes yet.
+        </p>
+      )}
       <ul className="space-y-3">
         {notes.data?.map((n) => (
-          <li key={n.id} className="border border-neutral-200 p-3">
-            <p className="text-xs text-neutral-500">
+          <li
+            key={n.id}
+            className="rounded-sm border border-rule border-l-4 border-l-gold bg-parchment/40 p-4"
+          >
+            <p className="eyebrow">
               {n.kind === "highlight" ? "Highlight" : "Note"} · passage {n.anchor_ordinal}
             </p>
-            {n.quote && <blockquote className="border-l-2 pl-2 italic">{n.quote}</blockquote>}
+            {n.quote && (
+              <blockquote className="my-2 border-l-2 border-rule pl-3 italic">{n.quote}</blockquote>
+            )}
             {n.body && <p className="whitespace-pre-wrap">{n.body}</p>}
             <button
               type="button"
-              className="mt-1 text-sm underline"
+              className="btn btn-danger btn-sm mt-3"
               onClick={() => del.mutate(n.id)}
               aria-label={`Delete ${n.kind}`}
             >

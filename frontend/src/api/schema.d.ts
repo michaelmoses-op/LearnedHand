@@ -869,6 +869,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Last Chunk Ordinal */
+            last_chunk_ordinal: number | null;
             /** Ordinal */
             ordinal: number;
             /** Parent Id */

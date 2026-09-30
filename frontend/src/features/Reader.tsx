@@ -1,8 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import { api, problemMessage } from "../api/client";
 import { askDocument, type AskCitation, type AskSource } from "./ask";
+import { ConceptMap } from "./ConceptMap";
+import { Notes } from "./Notes";
+import { ReadingPosition } from "./ReadingPosition";
+import { Study } from "./Study";
 
 type Section = {
   id: string;
@@ -12,7 +16,17 @@ type Section = {
   title: string;
   body: string | null;
   readable: boolean;
+  last_chunk_ordinal: number | null;
 };
+
+const TABS = [
+  { id: "ask", label: "Ask", needsReady: false },
+  { id: "contents", label: "Contents", needsReady: false },
+  { id: "concepts", label: "Concepts", needsReady: true },
+  { id: "notes", label: "Notes", needsReady: true },
+  { id: "study", label: "Study", needsReady: true },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
 
 export function Reader({ documentId }: { documentId: string }) {
   const qId = useId();
@@ -25,6 +39,8 @@ export function Reader({ documentId }: { documentId: string }) {
   const [asking, setAsking] = useState(false);
   const [tutor, setTutor] = useState(false);
   const [focusSection, setFocusSection] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabId>("ask");
+  const tabsId = useId();
 
   const doc = useQuery({
     queryKey: ["document", documentId],
@@ -47,6 +63,31 @@ export function Reader({ documentId }: { documentId: string }) {
       return data.items as Section[];
     },
   });
+
+  function openContents(sectionId: string) {
+    setFocusSection(sectionId);
+    setTab("contents");
+    // Wait for the Contents tab to render before scrolling to the cited section.
+    setTimeout(
+      () =>
+        document
+          .getElementById(`section-${sectionId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      50,
+    );
+  }
+
+  function onTabKey(e: KeyboardEvent<HTMLButtonElement>, ready: boolean) {
+    const enabled = TABS.filter((t) => ready || !t.needsReady);
+    const i = enabled.findIndex((t) => t.id === tab);
+    const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const next = enabled[(i + dir + enabled.length) % enabled.length];
+    if (dir !== 0 && next) {
+      e.preventDefault();
+      setTab(next.id);
+      document.getElementById(`${tabsId}-tab-${next.id}`)?.focus();
+    }
+  }
 
   async function onAsk(e: FormEvent) {
     e.preventDefault();
@@ -81,136 +122,174 @@ export function Reader({ documentId }: { documentId: string }) {
   }
 
   if (doc.isPending) return <p role="status">Loading…</p>;
-  if (doc.isError) return <p role="alert">{doc.error.message}</p>;
+  if (doc.isError)
+    return (
+      <p role="alert" className="alert">
+        {doc.error.message}
+      </p>
+    );
+
+  const ready = doc.data.status === "ready";
 
   return (
     <article>
       <p className="mb-4">
-        <Link to="/" className="underline">
+        <Link to="/" className="link-action">
           ← Library
         </Link>
       </p>
-      <h2 className="text-xl font-semibold">{doc.data.title}</h2>
-      <p className="text-sm text-neutral-600">
-        {doc.data.format.toUpperCase()} · {doc.data.status}
-        {doc.data.status === "ready" && (
-          <>
-            {" · "}
-            <Link
-              to="/documents/$documentId/concepts"
-              params={{ documentId }}
-              className="underline"
+
+      <header className="panel mb-6 p-6">
+        <p className="eyebrow">
+          {doc.data.format.toUpperCase()} · {doc.data.status}
+        </p>
+        <h2 className="mt-1 text-3xl font-semibold">{doc.data.title}</h2>
+        {ready && sections.data && (
+          <div className="mt-4">
+            <ReadingPosition documentId={documentId} sections={sections.data} />
+          </div>
+        )}
+      </header>
+
+      <div role="tablist" aria-label="Book sections" className="tabs">
+        {TABS.map((t) => {
+          const disabled = t.needsReady && !ready;
+          return (
+            <button
+              key={t.id}
+              id={`${tabsId}-tab-${t.id}`}
+              type="button"
+              role="tab"
+              className="tab"
+              aria-selected={tab === t.id}
+              aria-controls={`${tabsId}-panel`}
+              aria-disabled={disabled}
+              tabIndex={tab === t.id ? 0 : -1}
+              title={disabled ? "Available once the book has finished processing" : undefined}
+              onClick={() => !disabled && setTab(t.id)}
+              onKeyDown={(e) => onTabKey(e, ready)}
             >
-              Concepts
-            </Link>
-            {" · "}
-            <Link to="/documents/$documentId/notes" params={{ documentId }} className="underline">
-              Notes
-            </Link>
-            {" · "}
-            <Link to="/documents/$documentId/study" params={{ documentId }} className="underline">
-              Study
-            </Link>
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        id={`${tabsId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${tabsId}-tab-${tab}`}
+        className="tabpanel"
+      >
+        {tab === "ask" && (
+          <>
+            <form className="space-y-3" onSubmit={onAsk}>
+              <label htmlFor={qId} className="label">
+                Ask a question about what you have read
+              </label>
+              <textarea
+                id={qId}
+                className="field"
+                rows={3}
+                value={question}
+                disabled={asking || !ready}
+                onChange={(e) => setQuestion(e.target.value)}
+              />
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 cursor-pointer accent-burgundy"
+                  checked={tutor}
+                  onChange={(e) => setTutor(e.target.checked)}
+                />
+                Tutor mode (guide me with hints instead of answering directly)
+              </label>
+              <button type="submit" className="btn" disabled={asking || !question.trim() || !ready}>
+                {asking ? "Thinking…" : "Ask"}
+              </button>
+              {!ready && (
+                <p role="status" className="notice text-sm">
+                  Ingest must finish before you can ask questions.
+                </p>
+              )}
+              {status && (
+                <p role="status" className="muted text-sm">
+                  {status}…
+                </p>
+              )}
+              {error && (
+                <p role="alert" className="alert">
+                  {error}
+                </p>
+              )}
+            </form>
+
+            {answer && (
+              <section aria-labelledby="answer-heading" className="mt-8">
+                <hr className="rule mb-6" />
+                <h3 id="answer-heading" className="text-xl font-semibold">
+                  Answer
+                </h3>
+                <div className="prose-book dropcap mt-2 whitespace-pre-wrap">{answer}</div>
+                {citations.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="muted">Sources:</span>
+                    {citations.map((c) => (
+                      <button
+                        key={c.chunk_id}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        title="Jump to this passage in Contents"
+                        onClick={() => openContents(c.section_id)}
+                      >
+                        [{c.index}]
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {sources.length > 0 && citations.length === 0 && (
+                  <p className="muted mt-2 text-sm">{sources.length} sources retrieved.</p>
+                )}
+              </section>
+            )}
           </>
         )}
-      </p>
 
-      <form className="my-6 space-y-2" onSubmit={onAsk}>
-        <label htmlFor={qId} className="block font-medium">
-          Ask a question
-        </label>
-        <textarea
-          id={qId}
-          className="w-full border border-neutral-300 p-2"
-          rows={3}
-          value={question}
-          disabled={asking || doc.data.status !== "ready"}
-          onChange={(e) => setQuestion(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={tutor} onChange={(e) => setTutor(e.target.checked)} />
-          Tutor mode (guide me instead of answering directly)
-        </label>
-        <button
-          type="submit"
-          className="underline disabled:opacity-50"
-          disabled={asking || !question.trim() || doc.data.status !== "ready"}
-        >
-          {asking ? "Thinking…" : "Ask"}
-        </button>
-        {doc.data.status !== "ready" && (
-          <p role="status" className="text-sm text-neutral-600">
-            Ingest must finish before you can ask questions.
-          </p>
-        )}
-        {status && (
-          <p role="status" className="text-sm text-neutral-600">
-            {status}…
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="text-red-700">
-            {error}
-          </p>
-        )}
-      </form>
-
-      {answer && (
-        <section aria-labelledby="answer-heading" className="mb-8">
-          <h3 id="answer-heading" className="font-semibold">
-            Answer
-          </h3>
-          <div className="mt-2 whitespace-pre-wrap">{answer}</div>
-          {citations.length > 0 && (
-            <ul className="mt-3 flex flex-wrap gap-3 text-sm">
-              {citations.map((c) => (
-                <li key={c.chunk_id}>
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => {
-                      setFocusSection(c.section_id);
-                      document
-                        .getElementById(`section-${c.section_id}`)
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
-                  >
-                    [{c.index}]
-                  </button>
+        {tab === "contents" && (
+          <section aria-labelledby="sections-heading">
+            <h3 id="sections-heading" className="text-xl font-semibold">
+              Contents
+            </h3>
+            {sections.isPending && <p role="status">Loading sections…</p>}
+            {sections.isError && (
+              <p role="alert" className="alert">
+                {sections.error.message}
+              </p>
+            )}
+            <ol className="mt-4 space-y-6">
+              {(sections.data ?? []).map((s) => (
+                <li
+                  key={s.id}
+                  id={`section-${s.id}`}
+                  className={`rounded-sm p-3 ${focusSection === s.id ? "bg-gold/15 ring-2 ring-gold" : ""}`}
+                  style={{ marginLeft: `${s.depth * 0.75}rem` }}
+                >
+                  <h4 className="text-lg font-semibold">{s.title}</h4>
+                  {s.readable && s.body ? (
+                    <p className="prose-book mt-1 whitespace-pre-wrap">{s.body}</p>
+                  ) : (
+                    <p className="muted mt-1 text-sm italic">Past your reading progress.</p>
+                  )}
                 </li>
               ))}
-            </ul>
-          )}
-          {sources.length > 0 && citations.length === 0 && (
-            <p className="mt-2 text-sm text-neutral-600">{sources.length} sources retrieved.</p>
-          )}
-        </section>
-      )}
+            </ol>
+          </section>
+        )}
 
-      <section aria-labelledby="sections-heading">
-        <h3 id="sections-heading" className="font-semibold">
-          Contents
-        </h3>
-        {sections.isPending && <p role="status">Loading sections…</p>}
-        {sections.isError && <p role="alert">{sections.error.message}</p>}
-        <ol className="mt-4 space-y-6">
-          {(sections.data ?? []).map((s) => (
-            <li
-              key={s.id}
-              id={`section-${s.id}`}
-              className={focusSection === s.id ? "ring-2 ring-neutral-800" : undefined}
-              style={{ paddingLeft: `${s.depth * 0.75}rem` }}
-            >
-              <h4 className="font-medium">{s.title}</h4>
-              {s.readable && s.body ? (
-                <p className="mt-1 whitespace-pre-wrap text-neutral-800">{s.body}</p>
-              ) : (
-                <p className="mt-1 text-sm text-neutral-500">Past your reading progress.</p>
-              )}
-            </li>
-          ))}
-        </ol>
-      </section>
+        {tab === "concepts" && <ConceptMap documentId={documentId} />}
+        {tab === "notes" && <Notes documentId={documentId} />}
+        {tab === "study" && <Study documentId={documentId} />}
+      </div>
     </article>
   );
 }

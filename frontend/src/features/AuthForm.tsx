@@ -23,13 +23,14 @@ export function AuthForm({ submitLabel, onSubmit, serverError, pending, autoComp
     formState: { errors },
   } = useForm<AuthFields>({ resolver: zodResolver(schema) });
 
-  const input =
-    "mt-1 block w-full rounded border border-neutral-400 px-3 py-2 focus:outline-2 focus:outline-blue-600";
+  const input = "field";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <div>
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email" className="label">
+          Email
+        </label>
         <input
           id="email"
           type="email"
@@ -39,13 +40,15 @@ export function AuthForm({ submitLabel, onSubmit, serverError, pending, autoComp
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="alert mt-2 text-sm">
             {errors.email.message}
           </p>
         )}
       </div>
       <div>
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password" className="label">
+          Password
+        </label>
         <input
           id="password"
           type="password"
@@ -55,21 +58,17 @@ export function AuthForm({ submitLabel, onSubmit, serverError, pending, autoComp
           {...register("password")}
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="alert mt-2 text-sm">
             {errors.password.message}
           </p>
         )}
       </div>
       {serverError && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="alert mt-2 text-sm">
           {serverError}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
-      >
+      <button type="submit" disabled={pending} className="btn w-full">
         {submitLabel}
       </button>
     </form>

@@ -30,6 +30,8 @@ class SectionOut(StrictModel):
     title: str
     body: str | None
     readable: bool
+    # Last chunk ordinal of the section: what "I have finished this section" sets progress to.
+    last_chunk_ordinal: int | None
 
 
 class SectionListOut(StrictModel):

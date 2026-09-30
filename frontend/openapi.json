@@ -925,6 +925,17 @@
             "title": "Id",
             "type": "string"
           },
+          "last_chunk_ordinal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Chunk Ordinal"
+          },
           "ordinal": {
             "title": "Ordinal",
             "type": "integer"
@@ -957,7 +968,8 @@
           "depth",
           "title",
           "body",
-          "readable"
+          "readable",
+          "last_chunk_ordinal"
         ],
         "title": "SectionOut",
         "type": "object"

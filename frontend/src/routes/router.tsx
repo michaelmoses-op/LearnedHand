@@ -11,19 +11,26 @@ import { useState } from "react";
 import { AuthForm } from "../features/AuthForm";
 import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
-import { ConceptMap } from "../features/ConceptMap";
-import { Notes } from "../features/Notes";
 import { Library } from "../features/Library";
 import { Reader } from "../features/Reader";
 import { ReadyStatus } from "../features/ReadyStatus";
-import { Study } from "../features/Study";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">LearnedHand</h1>
-      <Outlet />
-    </main>
+    <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-10 sm:px-8">
+      <header className="pt-8 pb-6 text-center">
+        <p className="eyebrow">A reading companion for the humanities</p>
+        <h1 className="mt-1 text-4xl font-bold tracking-wide sm:text-5xl">
+          <Link to="/" className="text-ink no-underline hover:text-burgundy">
+            LearnedHand
+          </Link>
+        </h1>
+        <hr className="rule mx-auto mt-4 max-w-md" />
+      </header>
+      <main className="flex-1">
+        <Outlet />
+      </main>
+    </div>
   ),
 });
 
@@ -34,14 +41,16 @@ function Home() {
   if (!me.data) return <Navigate to="/login" />;
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <p>{me.data.email}</p>
-        <button className="underline" onClick={() => logout.mutate()}>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <p className="muted">
+          Signed in as <span className="font-semibold text-ink">{me.data.email}</span>
+        </p>
+        <button className="btn btn-secondary btn-sm" onClick={() => logout.mutate()}>
           Log out
         </button>
       </div>
       <Library />
-      <div className="mt-8 text-sm text-neutral-600">
+      <div className="muted mt-10 text-center text-sm">
         <ReadyStatus />
       </div>
     </>
@@ -56,36 +65,12 @@ function DocumentPage() {
   return <Reader documentId={documentId} />;
 }
 
-function ConceptsPage() {
-  const me = useMe();
-  const { documentId } = conceptsRoute.useParams();
-  if (me.isPending) return <p role="status">Loading…</p>;
-  if (!me.data) return <Navigate to="/login" />;
-  return <ConceptMap documentId={documentId} />;
-}
-
-function NotesPage() {
-  const me = useMe();
-  const { documentId } = notesRoute.useParams();
-  if (me.isPending) return <p role="status">Loading…</p>;
-  if (!me.data) return <Navigate to="/login" />;
-  return <Notes documentId={documentId} />;
-}
-
-function StudyPage() {
-  const me = useMe();
-  const { documentId } = studyRoute.useParams();
-  if (me.isPending) return <p role="status">Loading…</p>;
-  if (!me.data) return <Navigate to="/login" />;
-  return <Study documentId={documentId} />;
-}
-
 function Login() {
   const login = useLogin();
   const navigate = useNavigate();
   return (
-    <>
-      <h2 className="mb-4 text-xl">Log in</h2>
+    <div className="panel mx-auto max-w-md p-8">
+      <h2 className="mb-5 text-2xl font-semibold">Log in</h2>
       <AuthForm
         submitLabel="Log in"
         autoComplete="current-password"
@@ -98,18 +83,18 @@ function Login() {
           );
         }}
       />
-      <p className="mt-4">
-        <Link to="/reset-password" search={{ token: undefined }} className="underline">
+      <p className="mt-5">
+        <Link to="/reset-password" search={{ token: undefined }} className="link-action">
           Forgot password?
         </Link>
       </p>
       <p className="mt-2">
         No account?{" "}
-        <Link to="/signup" className="underline">
+        <Link to="/signup" className="link-action">
           Sign up
         </Link>
       </p>
-    </>
+    </div>
   );
 }
 
@@ -118,17 +103,17 @@ function Signup() {
   const [done, setDone] = useState(false);
   if (done)
     return (
-      <p role="status">
+      <p role="status" className="notice mx-auto max-w-md">
         Check your email to verify your address, then{" "}
-        <Link to="/login" className="underline">
+        <Link to="/login" className="link-action">
           log in
         </Link>
         .
       </p>
     );
   return (
-    <>
-      <h2 className="mb-4 text-xl">Create an account</h2>
+    <div className="panel mx-auto max-w-md p-8">
+      <h2 className="mb-5 text-2xl font-semibold">Create an account</h2>
       <AuthForm
         submitLabel="Sign up"
         autoComplete="new-password"
@@ -141,7 +126,7 @@ function Signup() {
           );
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -184,23 +169,6 @@ const documentRoute = createRoute({
   component: DocumentPage,
 });
 
-const conceptsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/documents/$documentId/concepts",
-  component: ConceptsPage,
-});
-
-const notesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/documents/$documentId/notes",
-  component: NotesPage,
-});
-const studyRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/documents/$documentId/study",
-  component: StudyPage,
-});
-
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
@@ -209,9 +177,6 @@ export const router = createRouter({
     verifyRoute,
     resetRoute,
     documentRoute,
-    conceptsRoute,
-    notesRoute,
-    studyRoute,
   ]),
 });
 
