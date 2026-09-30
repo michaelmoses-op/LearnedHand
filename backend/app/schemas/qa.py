@@ -22,6 +22,14 @@ class ProgressOut(StrictModel):
     max_ordinal: int
 
 
+class ChunkSpanOut(StrictModel):
+    """Where one chunk (the unit progress is tracked in) sits inside its section's text."""
+
+    ordinal: int
+    char_start: int
+    char_end: int
+
+
 class SectionOut(StrictModel):
     id: uuid.UUID
     parent_id: uuid.UUID | None
@@ -32,6 +40,9 @@ class SectionOut(StrictModel):
     readable: bool
     # Last chunk ordinal of the section: what "I have finished this section" sets progress to.
     last_chunk_ordinal: int | None
+    # Offsets only (never text); present when the section body is, so a paragraph can be mapped
+    # to the chunk boundary the reader has fully passed.
+    chunks: list[ChunkSpanOut]
 
 
 class SectionListOut(StrictModel):

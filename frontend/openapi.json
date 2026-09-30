@@ -85,6 +85,31 @@
         "title": "AskIn",
         "type": "object"
       },
+      "ChunkSpanOut": {
+        "additionalProperties": false,
+        "description": "Where one chunk (the unit progress is tracked in) sits inside its section's text.",
+        "properties": {
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ordinal",
+          "char_start",
+          "char_end"
+        ],
+        "title": "ChunkSpanOut",
+        "type": "object"
+      },
       "ConceptCellOut": {
         "additionalProperties": false,
         "properties": {
@@ -916,6 +941,13 @@
             ],
             "title": "Body"
           },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkSpanOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
           "depth": {
             "title": "Depth",
             "type": "integer"
@@ -969,7 +1001,8 @@
           "title",
           "body",
           "readable",
-          "last_chunk_ordinal"
+          "last_chunk_ordinal",
+          "chunks"
         ],
         "title": "SectionOut",
         "type": "object"

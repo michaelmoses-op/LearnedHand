@@ -10,6 +10,7 @@ export type PositionSection = {
 };
 
 const BEGINNING = "start";
+const PARTIAL = "partial";
 
 /** "Where are you in the book?" Everything in the app is limited to this point. */
 export function ReadingPosition({
@@ -27,7 +28,12 @@ export function ReadingPosition({
   const progress = status.data?.max_ordinal ?? null;
   const finished = stops.filter((s) => (s.last_chunk_ordinal ?? -1) <= (progress ?? -1));
   const current = finished.at(-1);
-  const value = status.isPending ? "" : current ? current.id : BEGINNING;
+  // Progress can sit mid-section (marked at a paragraph); then it matches no "End of …" stop.
+  const midSection = progress !== null && progress > 0 && current?.last_chunk_ordinal !== progress;
+  const partial = midSection
+    ? stops.find((s) => (s.last_chunk_ordinal ?? -1) > (progress ?? -1))
+    : undefined;
+  const value = status.isPending ? "" : partial ? PARTIAL : current ? current.id : BEGINNING;
 
   function onChange(next: string) {
     if (next === BEGINNING) return save.mutate(0);
@@ -51,6 +57,11 @@ export function ReadingPosition({
         {status.isPending && (
           <option value="" disabled>
             Loading…
+          </option>
+        )}
+        {partial && (
+          <option value={PARTIAL} disabled>
+            {`Partway through “${partial.title}”`}
           </option>
         )}
         <option value={BEGINNING}>The beginning (first passage only)</option>

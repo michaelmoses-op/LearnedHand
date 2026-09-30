@@ -533,6 +533,18 @@ export interface components {
             /** Question */
             question: string;
         };
+        /**
+         * ChunkSpanOut
+         * @description Where one chunk (the unit progress is tracked in) sits inside its section's text.
+         */
+        ChunkSpanOut: {
+            /** Char End */
+            char_end: number;
+            /** Char Start */
+            char_start: number;
+            /** Ordinal */
+            ordinal: number;
+        };
         /** ConceptCellOut */
         ConceptCellOut: {
             /** Chunks */
@@ -862,6 +874,8 @@ export interface components {
         SectionOut: {
             /** Body */
             body: string | null;
+            /** Chunks */
+            chunks: components["schemas"]["ChunkSpanOut"][];
             /** Depth */
             depth: number;
             /**

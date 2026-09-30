@@ -18,7 +18,7 @@ import { ReadyStatus } from "../features/ReadyStatus";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-10 sm:px-8">
+    <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-10 sm:px-8">
       <header className="pt-8 pb-6 text-center">
         <p className="eyebrow">A reading companion for the humanities</p>
         <h1 className="mt-1 text-4xl font-bold tracking-wide sm:text-5xl">

@@ -142,3 +142,24 @@ async def test_sections_and_progress(app: FastAPI, client: AsyncClient) -> None:
     assert any(s["readable"] for s in gated)
     if len(gated) > 1:
         assert any(not s["readable"] for s in gated) or all(s["readable"] for s in gated)
+
+
+@pytest.mark.usefixtures("user_a")
+async def test_sections_expose_chunk_offsets_only_for_readable_sections(
+    app: FastAPI, client: AsyncClient
+) -> None:
+    from tests.test_hierarchical import _ingest
+
+    doc_id = await _ingest(app, client)
+    items = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
+    assert all(s["chunks"] for s in items)  # default progress = end of book
+    for s in items:
+        ordinals = [c["ordinal"] for c in s["chunks"]]
+        assert ordinals == sorted(ordinals) and ordinals[-1] == s["last_chunk_ordinal"]
+        assert all(c["char_end"] > c["char_start"] >= 0 for c in s["chunks"])
+        assert all(set(c) == {"ordinal", "char_start", "char_end"} for c in s["chunks"])  # no text
+
+    await client.put(f"/api/v1/documents/{doc_id}/progress", json={"max_ordinal": 0})
+    items = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
+    assert items[0]["chunks"] and items[0]["body"]
+    assert all(not s["chunks"] and s["body"] is None for s in items[1:])

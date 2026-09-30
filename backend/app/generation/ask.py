@@ -252,6 +252,16 @@ async def list_readable_sections(
             )
         ).all()
     }
+    spans: dict[uuid.UUID, list[dict[str, int]]] = {}
+    span_rows = await session.execute(
+        select(Chunk.section_id, Chunk.ordinal, Chunk.char_start, Chunk.char_end)
+        .where(Chunk.user_id == ctx.user_id, Chunk.document_id == document_id)
+        .order_by(Chunk.ordinal)
+    )
+    for section_id, ordinal, start, end in span_rows.all():
+        spans.setdefault(section_id, []).append(
+            {"ordinal": ordinal, "char_start": start, "char_end": end}
+        )
     out: list[dict[str, Any]] = []
     for s in sections:
         min_ord = min_ords.get(s.id)
@@ -266,6 +276,7 @@ async def list_readable_sections(
                 "body": s.body if readable else None,
                 "readable": readable,
                 "last_chunk_ordinal": s.last_chunk_ordinal,
+                "chunks": spans.get(s.id, []) if readable else [],
             }
         )
     return out

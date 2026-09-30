@@ -7,7 +7,7 @@ import { ConceptMap } from "./ConceptMap";
 import { Notes } from "./Notes";
 import { useProgress, useSaveProgress } from "./progress";
 import { ReadingPosition } from "./ReadingPosition";
-import { SectionText } from "./SectionText";
+import { SectionText, type ChunkSpan } from "./SectionText";
 import { Study } from "./Study";
 
 type Section = {
@@ -19,6 +19,7 @@ type Section = {
   body: string | null;
   readable: boolean;
   last_chunk_ordinal: number | null;
+  chunks: ChunkSpan[];
 };
 
 const TABS = [
@@ -129,11 +130,14 @@ export function Reader({ documentId }: { documentId: string }) {
   const ready = doc.data.status === "ready";
   // The furthest section the reader has finished: where their bookmark sits.
   const gateNow = progress.data?.max_ordinal ?? -1;
-  const hereId = (sections.data ?? [])
-    .filter((s) => s.last_chunk_ordinal !== null && s.last_chunk_ordinal <= gateNow)
-    .sort(
-      (x, y) => (y.last_chunk_ordinal ?? 0) - (x.last_chunk_ordinal ?? 0) || y.ordinal - x.ordinal,
-    )[0]?.id;
+  const hereId =
+    (sections.data ?? []).find((s) => s.chunks.some((c) => c.ordinal === gateNow))?.id ??
+    (sections.data ?? [])
+      .filter((s) => s.last_chunk_ordinal !== null && s.last_chunk_ordinal <= gateNow)
+      .sort(
+        (x, y) =>
+          (y.last_chunk_ordinal ?? 0) - (x.last_chunk_ordinal ?? 0) || y.ordinal - x.ordinal,
+      )[0]?.id;
 
   return (
     <article>
@@ -264,8 +268,8 @@ export function Reader({ documentId }: { documentId: string }) {
                   Contents
                 </h3>
                 <p className="muted text-sm">
-                  Tip: double-click a section, or press <em>Finished here</em>, to mark how far you
-                  have read.
+                  Tip: click a paragraph (or double-click it) to mark how far you have read, or use{" "}
+                  <em>Finished here</em> for a whole section.
                 </p>
               </div>
               {sections.isPending && <p role="status">Loading sections…</p>}
@@ -284,7 +288,8 @@ export function Reader({ documentId }: { documentId: string }) {
                   const last = s.last_chunk_ordinal;
                   const gate = progress.data?.max_ordinal ?? -1;
                   const finished = last !== null && last <= gate;
-                  const here = finished && s.id === hereId;
+                  const here = s.id === hereId;
+                  const atEnd = here && finished;
                   const mark = () => {
                     if (last !== null && !saveProgress.isPending) saveProgress.mutate(last);
                   };
@@ -316,28 +321,36 @@ export function Reader({ documentId }: { documentId: string }) {
                             <button
                               type="button"
                               className="btn btn-secondary btn-sm"
-                              aria-label={`${here ? "Bookmarked" : "Finished here"}, ${s.title}`}
-                              disabled={saveProgress.isPending || here}
+                              aria-label={`${atEnd ? "Bookmarked" : "Finished here"}, ${s.title}`}
+                              disabled={saveProgress.isPending || atEnd}
                               onClick={mark}
                             >
-                              {here ? "Bookmarked" : "Finished here"}
+                              {atEnd ? "Bookmarked" : "Finished here"}
                             </button>
                           </div>
                         )}
                       </div>
-                      <div
-                        title={last !== null ? "Double-click to mark as finished" : undefined}
-                        onDoubleClick={() => {
-                          window.getSelection()?.removeAllRanges(); // drop the word double-click selected
-                          mark();
-                        }}
-                      >
-                        {s.readable && s.body ? (
-                          <SectionText title={s.title} body={s.body} />
-                        ) : (
+                      {s.readable && s.body ? (
+                        <SectionText
+                          title={s.title}
+                          body={s.body}
+                          chunks={s.chunks}
+                          progress={gate}
+                          showBookmark={here}
+                          disabled={saveProgress.isPending}
+                          onMark={(ordinal) => saveProgress.mutate(ordinal)}
+                        />
+                      ) : (
+                        <div
+                          title={last !== null ? "Double-click to mark as finished" : undefined}
+                          onDoubleClick={() => {
+                            window.getSelection()?.removeAllRanges();
+                            mark();
+                          }}
+                        >
                           <p className="muted mt-2 text-sm italic">Past your reading progress.</p>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}

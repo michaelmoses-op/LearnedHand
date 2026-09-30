@@ -39,9 +39,13 @@ const sections = {
       ordinal: 0,
       depth: 0,
       title: "Harbor",
-      body: "Nets and tide.",
+      body: "Nets and tide.\n\nGulls wheel over the pier.",
       readable: true,
       last_chunk_ordinal: 1,
+      chunks: [
+        { ordinal: 0, char_start: 0, char_end: 14 },
+        { ordinal: 1, char_start: 16, char_end: 42 },
+      ],
     },
     {
       id: S2,
@@ -52,6 +56,7 @@ const sections = {
       body: null,
       readable: false,
       last_chunk_ordinal: 3,
+      chunks: [],
     },
   ],
 };
@@ -142,7 +147,7 @@ test("reading position shows where you are and saves a new position", async () =
   expect(puts).toEqual([{ max_ordinal: 0 }, { max_ordinal: 3 }]);
 });
 
-test("double-click or the button marks a section as finished; bookmark shows where you are", async () => {
+test("the section button marks a whole section; the bookmark shows where you are", async () => {
   const progress = { current: 1 };
   const puts: unknown[] = [];
   renderIt(progress, puts);
@@ -151,7 +156,40 @@ test("double-click or the button marks a section as finished; bookmark shows whe
   await userEvent.click(screen.getByRole("button", { name: "Finished here, Orchard" }));
   await waitFor(() => expect(puts).toEqual([{ max_ordinal: 3 }]));
   await waitFor(() => expect(screen.getByRole("button", { name: /Bookmarked/ })).toBeDisabled());
+});
 
-  await userEvent.dblClick(screen.getByText("Nets and tide."));
-  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 3 }, { max_ordinal: 1 }]));
+test("double-clicking a paragraph saves the last fully-read passage", async () => {
+  const progress = { current: 3 };
+  const puts: unknown[] = [];
+  renderIt(progress, puts);
+  // First paragraph is passage 0 exactly.
+  await userEvent.dblClick(await screen.findByText("Nets and tide."));
+  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 0 }]));
+  // Second paragraph ends passage 1.
+  await userEvent.dblClick(screen.getByText("Gulls wheel over the pier."));
+  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 0 }, { max_ordinal: 1 }]));
+});
+
+test("clicking a paragraph offers a button; read paragraphs and the bookmark reflect progress", async () => {
+  const progress = { current: 0 };
+  const puts: unknown[] = [];
+  renderIt(progress, puts);
+  const first = await screen.findByText("Nets and tide.");
+  const second = screen.getByText("Gulls wheel over the pier.");
+  expect(first).toHaveAttribute("data-read", "true");
+  expect(second).not.toHaveAttribute("data-read");
+  expect(screen.getByText("You have read up to here")).toBeInTheDocument();
+
+  await userEvent.click(second);
+  await userEvent.click(screen.getByRole("button", { name: "I have read up to here" }));
+  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 1 }]));
+  await waitFor(() =>
+    expect(screen.getByText("Gulls wheel over the pier.")).toHaveAttribute("data-read", "true"),
+  );
+});
+
+test("progress inside a section shows as 'Partway through' in the position picker", async () => {
+  renderIt({ current: 2 });
+  const select = await screen.findByLabelText("I have read up to");
+  await waitFor(() => expect(select).toHaveDisplayValue("Partway through “Orchard”"));
 });
