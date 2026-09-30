@@ -101,8 +101,11 @@ function renderIt(progress: { current: number }, puts: unknown[] = []) {
 test("Concepts, Notes and Study open beneath the tab bar without leaving the page", async () => {
   renderIt({ current: 3 });
   const tabs = await screen.findAllByRole("tab");
-  expect(tabs.map((t) => t.textContent)).toEqual(["Ask", "Contents", "Concepts", "Notes", "Study"]);
-  expect(screen.getByRole("tab", { name: "Ask" })).toHaveAttribute("aria-selected", "true");
+  expect(tabs.map((t) => t.textContent)).toEqual(["Read & Ask", "Concepts", "Notes", "Study"]);
+  expect(screen.getByRole("tab", { name: "Read & Ask" })).toHaveAttribute("aria-selected", "true");
+  // Ask box and contents share one page, chat first.
+  expect(screen.getByLabelText(/Ask a question/)).toBeInTheDocument();
+  expect(screen.getByText("Nets and tide.")).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("tab", { name: "Notes" }));
   expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute("aria-selected", "true");
@@ -113,17 +116,17 @@ test("Concepts, Notes and Study open beneath the tab bar without leaving the pag
   await userEvent.click(screen.getByRole("tab", { name: "Concepts" }));
   expect(await screen.findByText(/No concepts yet/)).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("tab", { name: "Contents" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Read & Ask" }));
   expect(await screen.findByText("Nets and tide.")).toBeInTheDocument();
   expect(screen.getByText("Past your reading progress.")).toBeInTheDocument();
 });
 
 test("arrow keys move between tabs", async () => {
   renderIt({ current: 3 });
-  const ask = await screen.findByRole("tab", { name: "Ask" });
-  ask.focus();
+  const first = await screen.findByRole("tab", { name: "Read & Ask" });
+  first.focus();
   await userEvent.keyboard("{ArrowRight}");
-  expect(screen.getByRole("tab", { name: "Contents" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: "Concepts" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("reading position shows where you are and saves a new position", async () => {
@@ -137,4 +140,18 @@ test("reading position shows where you are and saves a new position", async () =
   await waitFor(() => expect(select).toHaveDisplayValue("The beginning (first passage only)"));
   await userEvent.selectOptions(select, "End of “Orchard”");
   expect(puts).toEqual([{ max_ordinal: 0 }, { max_ordinal: 3 }]);
+});
+
+test("double-click or the button marks a section as finished; bookmark shows where you are", async () => {
+  const progress = { current: 1 };
+  const puts: unknown[] = [];
+  renderIt(progress, puts);
+  await screen.findByText("Nets and tide.");
+  await screen.findByText("You are here");
+  await userEvent.click(screen.getByRole("button", { name: "Finished here, Orchard" }));
+  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 3 }]));
+  await waitFor(() => expect(screen.getByRole("button", { name: /Bookmarked/ })).toBeDisabled());
+
+  await userEvent.dblClick(screen.getByText("Nets and tide."));
+  await waitFor(() => expect(puts).toEqual([{ max_ordinal: 3 }, { max_ordinal: 1 }]));
 });

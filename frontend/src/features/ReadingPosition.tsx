@@ -1,6 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
-import { api, problemMessage } from "../api/client";
+import { useProgress, useSaveProgress } from "./progress";
 
 export type PositionSection = {
   id: string;
@@ -21,28 +20,8 @@ export function ReadingPosition({
   sections: PositionSection[];
 }) {
   const selectId = useId();
-  const qc = useQueryClient();
-  const status = useQuery({
-    queryKey: ["status", documentId],
-    queryFn: async () => {
-      const { data, error } = await api.GET("/api/v1/documents/{document_id}/status", {
-        params: { path: { document_id: documentId } },
-      });
-      if (error || !data) throw new Error(problemMessage(error, "Could not load progress"));
-      return data;
-    },
-  });
-  const save = useMutation({
-    mutationFn: async (max_ordinal: number) => {
-      const { error } = await api.PUT("/api/v1/documents/{document_id}/progress", {
-        params: { path: { document_id: documentId } },
-        body: { max_ordinal },
-      });
-      if (error) throw new Error(problemMessage(error, "Could not save progress"));
-    },
-    // Progress gates every feature, so refresh everything that depends on it.
-    onSuccess: () => qc.invalidateQueries(),
-  });
+  const status = useProgress(documentId);
+  const save = useSaveProgress(documentId);
 
   const stops = sections.filter((s) => s.last_chunk_ordinal !== null);
   const progress = status.data?.max_ordinal ?? null;

@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useState } from "react";
+import { BackToTop } from "../components/BackToTop";
 import { AuthForm } from "../features/AuthForm";
 import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
@@ -30,6 +31,7 @@ const rootRoute = createRootRoute({
       <main className="flex-1">
         <Outlet />
       </main>
+      <BackToTop />
     </div>
   ),
 });
