@@ -7,6 +7,7 @@ import { ConceptMap } from "./ConceptMap";
 import { Notes } from "./Notes";
 import { useProgress, useSaveProgress } from "./progress";
 import { ReadingPosition } from "./ReadingPosition";
+import { SectionText } from "./SectionText";
 import { Study } from "./Study";
 
 type Section = {
@@ -332,7 +333,7 @@ export function Reader({ documentId }: { documentId: string }) {
                         }}
                       >
                         {s.readable && s.body ? (
-                          <p className="prose-book mt-2 whitespace-pre-wrap">{s.body}</p>
+                          <SectionText title={s.title} body={s.body} />
                         ) : (
                           <p className="muted mt-2 text-sm italic">Past your reading progress.</p>
                         )}

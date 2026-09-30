@@ -172,3 +172,29 @@ async def test_pdf_ingest_fails_cleanly(app: FastAPI, client: AsyncClient) -> No
     st = (await client.get(f"/api/v1/documents/{doc_id}/status")).json()
     assert st["status"] == "failed"
     assert st["error"]
+
+
+def test_epub_text_has_one_paragraph_per_block_and_no_duplicates() -> None:
+    from app.ingestion.parse_epub import _xhtml_text
+
+    html = (
+        b"<html xmlns='http://www.w3.org/1999/xhtml'><body><div class='chapter'>"
+        b"<h1>Chapter One</h1>"
+        b"<p>First <em>paragraph</em> here.</p>"
+        b"<blockquote><p>A quoted line.</p></blockquote>"
+        b"loose words between blocks"
+        b"<p>Verse one<br/>verse two<br/>verse three</p>"
+        b"<ul><li>item a</li><li>item b</li></ul>"
+        b"</div></body></html>"
+    )
+    text, heading = _xhtml_text(html)
+    assert heading == "Chapter One"
+    assert text.split("\n\n") == [
+        "Chapter One",
+        "First paragraph here.",
+        "A quoted line.",
+        "loose words between blocks",
+        "Verse one\nverse two\nverse three",
+        "item a",
+        "item b",
+    ]

@@ -279,6 +279,28 @@
     box-shadow: 0 10px 24px -14px rgb(70 50 20 / 0.45);
   }
 
+  /* Book page: comfortable measure, justified, indented paragraphs, verse breaks kept. */
+  .book-text {
+    max-width: 38rem;
+    margin-inline: auto;
+    line-height: 1.85;
+    text-align: justify;
+    hyphens: auto;
+    font-size: 1.05rem;
+  }
+  .book-text p {
+    white-space: pre-line;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .book-text p + p {
+    margin-top: 0.7em;
+    text-indent: 1.6em;
+  }
+  .book-text p.dropcap {
+    text-indent: 0;
+  }
+
   .prose-book {
     line-height: 1.75;
     hyphens: auto;

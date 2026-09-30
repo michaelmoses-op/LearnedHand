@@ -177,6 +177,56 @@ def _is_xhtml(path: str) -> bool:
     return lower.endswith((".xhtml", ".html", ".htm", ".xml"))
 
 
+_BLOCK_TAGS = frozenset(
+    {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "dt", "dd", "tr"}
+)
+
+
+def _local(el: etree._Element) -> str:
+    return etree.QName(el).localname.lower() if "}" in str(el.tag) else str(el.tag).lower()
+
+
+def _clean_text(text: str) -> str:
+    """Collapse runs of whitespace but keep explicit line breaks."""
+    lines = (" ".join(line.split()) for line in text.split("\n"))
+    return "\n".join(line for line in lines if line)
+
+
+def _is_block(el: etree._Element) -> bool:
+    return isinstance(el.tag, str) and _local(el) in _BLOCK_TAGS
+
+
+def _has_block_descendant(el: etree._Element) -> bool:
+    return any(_is_block(d) for d in el.iterdescendants())
+
+
+def _collect_blocks(el: etree._Element, out: list[str]) -> None:
+    """One paragraph per innermost block. A wrapper <div>/<blockquote> is not emitted as well as
+    its children (that duplicated text), and loose text between nested blocks stays a paragraph."""
+    if not _has_block_descendant(el):
+        text = _clean_text("".join(el.itertext()))
+        if text:
+            out.append(text)
+        return
+    loose = el.text or ""
+
+    def flush() -> None:
+        nonlocal loose
+        text = _clean_text(loose)
+        if text:
+            out.append(text)
+        loose = ""
+
+    for child in el:
+        if isinstance(child.tag, str) and (_is_block(child) or _has_block_descendant(child)):
+            flush()
+            _collect_blocks(child, out)
+        elif isinstance(child.tag, str):
+            loose += "".join(child.itertext())
+        loose += child.tail or ""
+    flush()
+
+
 def _xhtml_text(raw: bytes) -> tuple[str, str | None]:
     try:
         root = etree.fromstring(raw)
@@ -201,17 +251,14 @@ def _xhtml_text(raw: bytes) -> tuple[str, str | None]:
     if body is None:
         body = root.find(".//body")
     target = body if body is not None else root
+    # <br> becomes a real line break (verse, addresses); other whitespace collapses.
+    for br in target.iter():
+        if isinstance(br.tag, str) and _local(br) == "br":
+            br.tail = "\n" + (br.tail or "")
     parts: list[str] = []
-    for el in target.iter():
-        if not isinstance(el.tag, str):
-            continue
-        local = etree.QName(el).localname.lower() if "}" in str(el.tag) else el.tag.lower()
-        if local in {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote"}:
-            t = " ".join("".join(el.itertext()).split())
-            if t:
-                parts.append(t)
+    _collect_blocks(target, parts)
     if not parts:
-        t = " ".join("".join(target.itertext()).split())
+        t = _clean_text("".join(target.itertext()))
         if t:
             parts.append(t)
     return "\n\n".join(parts), heading
