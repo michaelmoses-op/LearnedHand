@@ -30,12 +30,16 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.job import Job
 from app.models.section import Section
-from app.repositories.content import ChunkRepository, ProgressRepository, SectionRepository
+from app.repositories.content import ChunkRepository, SectionRepository
 from app.repositories.documents import DocumentRepository
 from app.repositories.summaries import SummaryRepository
 from app.storage.base import Storage
 
 log = get_logger("ingestion.pipeline")
+
+
+# Errors whose message is a static reason (never document text), safe to show the user.
+_PARSER_ERROR_CODES = frozenset({"epub_invalid", "pdf_invalid", "ingest_failed"})
 
 
 class IngestError(DomainError):
@@ -126,15 +130,6 @@ async def run_ingest(
             chunks = await chunk_repo.replace_for_document(doc.id, chunks)
             for stage in ("chunk", "context", "embed"):
                 versions[stage] = STAGE_VERSIONS[stage]
-            # First ingest: progress at end of book (the reader lowers it; gate is opt-in).
-            # Re-ingest must never reset the reader's progress, only clamp it to the new range.
-            progress_repo = ProgressRepository(session, ctx)
-            last_ordinal = max(c.ordinal for c in chunks)
-            existing = await progress_repo.get(doc.id)
-            await progress_repo.upsert(
-                doc.id,
-                last_ordinal if existing is None else min(existing.max_ordinal, last_ordinal),
-            )
         else:
             chunks = await chunk_repo.list_for_document(doc.id)
             if not chunks:
@@ -186,8 +181,12 @@ async def run_ingest(
         )
     except Exception as exc:
         doc.status = "failed"
-        # Safe summary only — never include passage text.
-        doc.error = f"{type(exc).__name__}: ingest_failed"[:500]
+        # Safe summary only — never include passage text. Parser errors carry a static reason
+        # (e.g. "pdf_no_text_layer") that the UI turns into a helpful message.
+        if isinstance(exc, DomainError) and exc.code in _PARSER_ERROR_CODES:
+            doc.error = f"{type(exc).__name__}: {exc.detail}"[:500]
+        else:
+            doc.error = f"{type(exc).__name__}: ingest_failed"[:500]
         doc.updated_at = datetime.now(UTC)
         await session.flush()
         log.warning(

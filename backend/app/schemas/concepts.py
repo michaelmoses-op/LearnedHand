@@ -8,7 +8,6 @@ class SectionAxisOut(StrictModel):
     title: str
     ordinal: int
     chunks: int
-    fully_read: bool
 
 
 class ConceptCellOut(StrictModel):
@@ -26,9 +25,8 @@ class ConceptRowOut(StrictModel):
 
 
 class ConceptMapOut(StrictModel):
-    """Concept × section heat map, limited to what the reader has reached."""
+    """Concept × section heat map."""
 
-    progress: int | None
     sections: list[SectionAxisOut]
     concepts: list[ConceptRowOut]
 
@@ -39,7 +37,7 @@ class TrajectoryPointOut(StrictModel):
     section_ordinal: int
     first_ordinal: int
     chunks: int
-    note: str | None  # null until the reader has finished the section
+    note: str | None
 
 
 class TrajectoryOut(StrictModel):

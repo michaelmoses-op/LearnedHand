@@ -2,7 +2,7 @@
 # and give `make eval` something to compare out of the box; they are NOT a substitute for real
 # questions about real books. Add your own files here (see evals/README.md).
 name: demo
-description: Factual and spoiler-gate questions over "The Chronicle of Saltmere".
+description: Factual questions over "The Chronicle of Saltmere".
 corpus:
   demo: true
 questions:
@@ -66,15 +66,3 @@ questions:
     question: How much did library membership cost each year?
     expected_chunks: ["two shillings a year"]
     expected_points: ["two shillings"]
-  # Spoiler gate: the reader has finished only the first two chapters, so nothing about the
-  # flood (chapter 5) may be retrievable, whatever the retrieval strategy.
-  - id: spoiler-flood
-    question: How high did the great flood of 1866 rise above the harbor wall?
-    progress: { after_section: 2 }
-    forbidden_snippets: ["four feet above the harbor wall", "cooling shed", "lower bridge"]
-    tags: [spoiler]
-  - id: spoiler-library
-    question: Who founded the subscription library and what did membership cost?
-    progress: { after_section: 3 }
-    forbidden_snippets: ["Marta Quill", "two shillings"]
-    tags: [spoiler]

@@ -16,8 +16,8 @@ from app.core.deps import (
     csrf_protect,
 )
 from app.core.errors import NotFoundError, PayloadTooLargeError
-from app.generation.ask import AskService, DocumentNotReadyError, list_readable_sections
-from app.repositories.content import ProgressRepository
+from app.generation.ask import AskService, DocumentNotReadyError
+from app.generation.ask import list_sections as load_sections
 from app.schemas.concepts import ConceptMapOut, TrajectoryOut
 from app.schemas.documents import (
     DocumentOut,
@@ -26,9 +26,11 @@ from app.schemas.documents import (
     QualityReportOut,
     ReingestIn,
 )
-from app.schemas.qa import AskIn, ProgressIn, ProgressOut, SectionListOut, SectionOut
+from app.schemas.qa import AskIn, SectionListOut, SectionOut
+from app.schemas.summaries import SummariesOut
 from app.services.concepts import ConceptService
 from app.services.documents import DocumentService, decode_cursor, encode_cursor
+from app.services.summaries import get_summaries
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(csrf_protect)])
 
@@ -106,13 +108,11 @@ async def get_document_status(
     doc = await DocumentService(db, auth, storage).repo.get(document_id)
     if doc is None:
         raise NotFoundError("Document not found")
-    progress = await ProgressRepository(db, auth).get(document_id)
     return DocumentStatusOut(
         id=doc.id,
         status=doc.status,
         ingest_stage=doc.ingest_stage,
         error=doc.error,
-        max_ordinal=progress.max_ordinal if progress else None,
         updated_at=doc.updated_at,
     )
 
@@ -155,19 +155,17 @@ async def reingest_document(
     storage: StorageDep,
     limiter: LimiterDep,
 ) -> DocumentStatusOut:
-    """Re-run ingestion from a stage (default: first stale stage). Keeps reading progress."""
+    """Re-run ingestion from a stage (default: first stale stage)."""
     limiter.check(f"reingest:user:{auth.user_id}", 20, 3600)
     doc = await DocumentService(db, auth, storage).reingest(document_id, body.from_stage)
     if doc is None:
         raise NotFoundError("Document not found")
     await db.commit()
-    progress = await ProgressRepository(db, auth).get(document_id)
     return DocumentStatusOut(
         id=doc.id,
         status=doc.status,
         ingest_stage=doc.ingest_stage,
         error=doc.error,
-        max_ordinal=progress.max_ordinal if progress else None,
         updated_at=doc.updated_at,
     )
 
@@ -184,20 +182,14 @@ async def delete_document(
 
 @router.get("/{document_id}/sections", response_model=SectionListOut)
 async def list_sections(document_id: uuid.UUID, auth: AuthDep, db: AuthDbDep) -> SectionListOut:
-    rows = await list_readable_sections(db, auth, document_id)
+    rows = await load_sections(db, auth, document_id)
     return SectionListOut(items=[SectionOut.model_validate(r) for r in rows])
 
 
-@router.put("/{document_id}/progress", response_model=ProgressOut)
-async def put_progress(
-    document_id: uuid.UUID, body: ProgressIn, auth: AuthDep, db: AuthDbDep, storage: StorageDep
-) -> ProgressOut:
-    doc = await DocumentService(db, auth, storage).repo.get(document_id)
-    if doc is None:
-        raise NotFoundError("Document not found")
-    row = await ProgressRepository(db, auth).upsert(document_id, body.max_ordinal)
-    await db.commit()
-    return ProgressOut(document_id=document_id, max_ordinal=row.max_ordinal)
+@router.get("/{document_id}/summaries", response_model=SummariesOut)
+async def list_summaries(document_id: uuid.UUID, auth: AuthDep, db: AuthDbDep) -> SummariesOut:
+    """Book-level and per-section summaries generated at ingestion."""
+    return await get_summaries(db, auth, document_id)
 
 
 @router.post(

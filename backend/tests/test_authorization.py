@@ -18,21 +18,16 @@ ID_ROUTES = [
     ("GET", "/api/v1/documents/{document_id}/status"),
     ("GET", "/api/v1/documents/{document_id}/sections"),
     ("GET", "/api/v1/documents/{document_id}/quality"),
+    ("GET", "/api/v1/documents/{document_id}/summaries"),
     ("GET", "/api/v1/documents/{document_id}/concepts"),
     ("GET", "/api/v1/documents/{document_id}/concepts/{concept_id}/trajectory"),
     ("POST", "/api/v1/documents/{document_id}/reingest"),
-    ("PUT", "/api/v1/documents/{document_id}/progress"),
     ("POST", "/api/v1/documents/{document_id}/ask"),
     ("DELETE", "/api/v1/documents/{document_id}"),
     ("POST", "/api/v1/documents/{document_id}/notes"),
     ("GET", "/api/v1/documents/{document_id}/notes"),
     ("PATCH", "/api/v1/documents/{document_id}/notes/{note_id}"),
     ("DELETE", "/api/v1/documents/{document_id}/notes/{note_id}"),
-    ("POST", "/api/v1/documents/{document_id}/study/generate"),
-    ("GET", "/api/v1/documents/{document_id}/flashcards"),
-    ("POST", "/api/v1/documents/{document_id}/flashcards/{card_id}/review"),
-    ("GET", "/api/v1/documents/{document_id}/quiz"),
-    ("POST", "/api/v1/documents/{document_id}/quiz/{question_id}/answer"),
 ]
 PUBLIC_ID_ROUTES: list[tuple[str, str]] = []
 
@@ -41,9 +36,6 @@ def _idor_kwargs(method: str, template: str = "") -> dict[str, Any]:
     bodies = {
         "/reingest": {},
         "/notes": {"body": "x"},
-        "/generate": {"kind": "quiz"},
-        "/review": {"rating": "good"},
-        "/answer": {"choice": 0},
     }
     for suffix, body in bodies.items():
         if method in ("POST", "PATCH") and template.endswith(suffix):
@@ -52,8 +44,6 @@ def _idor_kwargs(method: str, template: str = "") -> dict[str, Any]:
         return {"json": {"body": "x"}}
     if method == "POST":
         return {"json": {"question": "x"}}
-    if method == "PUT":
-        return {"json": {"max_ordinal": 0}}
     return {}
 
 
@@ -115,7 +105,6 @@ async def test_list_only_shows_own_documents(client: AsyncClient, client_b: Asyn
         ("GET", f"/api/v1/documents/{uuid.uuid4()}"),
         ("GET", f"/api/v1/documents/{uuid.uuid4()}/status"),
         ("GET", f"/api/v1/documents/{uuid.uuid4()}/sections"),
-        ("PUT", f"/api/v1/documents/{uuid.uuid4()}/progress"),
         ("POST", f"/api/v1/documents/{uuid.uuid4()}/ask"),
         ("DELETE", f"/api/v1/documents/{uuid.uuid4()}"),
         ("GET", "/api/v1/auth/me"),

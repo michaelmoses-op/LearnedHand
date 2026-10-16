@@ -56,15 +56,15 @@ def test_contains_any_and_cost_and_percentile() -> None:
     assert metrics.percentile([], 50) is None
 
 
-def test_summarise_sums_leaks_and_takes_percentiles() -> None:
+def test_summarise_sums_tokens_and_takes_percentiles() -> None:
     rows: list[dict[str, Any]] = [
-        {"recall_at_5": 1.0, "spoiler_leaks": 0, "latency_ms": 10.0, "input_tokens": 5},
-        {"recall_at_5": 0.5, "spoiler_leaks": 2, "latency_ms": 30.0, "input_tokens": 7},
-        {"recall_at_5": None, "spoiler_leaks": 0, "latency_ms": 20.0, "input_tokens": 1},
+        {"recall_at_5": 1.0, "latency_ms": 10.0, "input_tokens": 5},
+        {"recall_at_5": 0.5, "latency_ms": 30.0, "input_tokens": 7},
+        {"recall_at_5": None, "latency_ms": 20.0, "input_tokens": 1},
     ]
     s = metrics.summarise(rows)
     assert s["recall_at_5"] == 0.75  # None (no gold) is excluded from the mean
-    assert s["spoiler_leaks"] == 2 and s["input_tokens"] == 13
+    assert s["input_tokens"] == 13
     assert s["latency_ms_p50"] == 20.0
 
 
@@ -89,16 +89,15 @@ def test_schema_rejects_unknown_keys_and_unsupported_iterations() -> None:
 
 
 def test_demo_questions_target_text_that_really_exists() -> None:
-    """A gold or forbidden snippet missing from the corpus would make a metric vacuous."""
+    """A gold snippet missing from the corpus would make a metric vacuous."""
     book = parse_epub(corpus.demo_epub())
     chunks = chunk_sections(book.sections)
     assert len(chunks) >= 20  # enough distractors for recall@5 to mean something
     full = " ".join(c.text for c in chunks).lower()
     qfile = load_questions(EVALS / "questions" / "demo.yaml")
     for q in qfile.questions:
-        for snippet in [*q.expected_chunks, *q.forbidden_snippets]:
+        for snippet in q.expected_chunks:
             assert snippet.lower() in full, (q.id, snippet)
-    assert any("spoiler" in q.tags for q in qfile.questions)
 
 
 def test_demo_epub_is_deterministic() -> None:
@@ -132,7 +131,6 @@ async def test_end_to_end_eval_compares_configs_and_respects_rls(
     assert base["recall_at_5"] >= 0.9
     assert base["questions"] == len(qfile.questions)
     for s in summaries.values():
-        assert s["spoiler_leaks"] == 0  # gate holds for every strategy
         assert s["latency_ms_p50"] > 0 and s["input_tokens"] > 0
     assert "broad_section_recall" in summaries["hierarchical_hybrid"]
     assert "broad_section_recall" not in base

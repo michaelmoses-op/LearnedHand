@@ -1,4 +1,4 @@
-"""Summaries stage, hierarchical retrieval, spoiler-gate leakage, rerank, reingest, quality."""
+"""Summaries stage, hierarchical retrieval, rerank, reingest, quality."""
 
 from __future__ import annotations
 
@@ -108,28 +108,6 @@ async def test_summaries_stage_builds_tree_with_ranges_and_quality(
     assert q["report"]["score"] > 0.5 and q["report"]["section_count"] == 4
 
 
-@pytest.mark.usefixtures("user_a")
-async def test_summary_visibility_requires_reader_to_have_passed_it(
-    app: FastAPI, client: AsyncClient
-) -> None:
-    doc_id = await _ingest(app, client)
-    user = await _uid(client)
-    sections = await _sections(app, user, doc_id)
-    gate = sections[1].last_chunk_ordinal
-    assert gate is not None
-    async with app.state.sessionmaker() as s:
-        await set_rls_user(s, user)
-        visible = await SummaryRepository(s, AuthContext(user)).list_visible(doc_id, gate)
-    assert {v.section_id for v in visible} == {sections[0].id, sections[1].id}
-    assert all(v.last_ordinal <= gate and v.kind == "section" for v in visible)
-    # Mid-chapter: the chapter being read has no visible summary yet.
-    mid = sections[1].first_chunk_ordinal or 0
-    async with app.state.sessionmaker() as s:
-        await set_rls_user(s, user)
-        vis = await SummaryRepository(s, AuthContext(user)).list_visible(doc_id, mid)
-    assert {v.section_id for v in vis} == {sections[0].id}
-
-
 async def _run(
     app: FastAPI,
     settings: Settings,
@@ -137,7 +115,6 @@ async def _run(
     doc_id: uuid.UUID,
     query: str,
     cfg: RetrievalConfig,
-    progress: int,
     reranker: FakeReranker | None = None,
 ) -> tuple[list[Chunk], Any]:
     async with app.state.sessionmaker() as s:
@@ -145,7 +122,7 @@ async def _run(
         pipe = RetrievalPipeline(
             s, AuthContext(user), settings, document_id=doc_id, reranker=reranker
         )
-        result = await pipe.run(document_id=doc_id, query=query, config=cfg, progress=progress)
+        result = await pipe.run(document_id=doc_id, query=query, config=cfg)
         ids = [c.chunk_id for c in result.chunks]
         rows = (await s.execute(select(Chunk).where(Chunk.id.in_(ids)))).scalars()
         by_id = {c.id: c for c in rows}
@@ -159,9 +136,8 @@ async def test_hierarchical_broad_pass_narrows_to_the_matching_section(
     doc_id = await _ingest(app, client)
     user = await _uid(client)
     sections = await _sections(app, user, doc_id)
-    end = max(s.last_chunk_ordinal or 0 for s in sections)
     cfg = RetrievalConfig(name="h", hierarchical=True, broad_k=1, final_k=5)
-    chunks, result = await _run(app, settings, user, doc_id, "orchard blossom beehives", cfg, end)
+    chunks, result = await _run(app, settings, user, doc_id, "orchard blossom beehives", cfg)
     broad = next(s for s in result.stages if s.name == "broad")
     assert broad.ids == [sections[1].id]
     assert chunks and {c.section_id for c in chunks} == {sections[1].id}
@@ -178,42 +154,36 @@ async def test_hierarchical_broad_pass_narrows_to_the_matching_section(
 
 @pytest.mark.usefixtures("user_a")
 @pytest.mark.parametrize("hierarchical", [False, True])
-async def test_no_spoiler_leakage_through_summaries_or_chunks(
+async def test_every_chapter_is_reachable_from_the_whole_book(
     app: FastAPI, client: AsyncClient, settings: Settings, hierarchical: bool
 ) -> None:
     doc_id = await _ingest(app, client)
     user = await _uid(client)
     sections = await _sections(app, user, doc_id)
-    gate = sections[1].last_chunk_ordinal  # reader has finished chapter 2 only
-    assert gate is not None
-    later_ids = {s.id for s in sections[2:]}
-    cfg = RetrievalConfig(hierarchical=hierarchical, broad_k=4, final_k=20, candidate_k=100)
-    for query in ("glacier expedition crevasse", "furnace ironwork anvil", "everything"):
-        chunks, result = await _run(app, settings, user, doc_id, query, cfg, gate)
-        assert all(c.ordinal <= gate for c in chunks)
-        assert not ({c.section_id for c in chunks} & later_ids)
-        assert not any("glacier" in c.body or "furnace" in c.body for c in chunks)
-        for stage in result.stages:
-            if stage.name == "broad":
-                assert not (set(stage.ids) & later_ids)  # later summaries are unreachable
+    cfg = RetrievalConfig(hierarchical=hierarchical, broad_k=4, final_k=5, candidate_k=100)
+    for query, section in (
+        ("harbor lighthouse nets", sections[0]),
+        ("glacier expedition crevasse", sections[3]),
+        ("furnace ironwork anvil", sections[2]),
+    ):
+        chunks, _ = await _run(app, settings, user, doc_id, query, cfg)
+        assert chunks and chunks[0].section_id == section.id
 
 
 @pytest.mark.usefixtures("user_a")
-async def test_frontier_section_is_searchable_while_being_read(
+async def test_section_without_a_summary_is_still_searched(
     app: FastAPI, client: AsyncClient, settings: Settings
 ) -> None:
-    """Mid-chapter, that chapter's summary is hidden but its already-read chunks stay reachable."""
     doc_id = await _ingest(app, client)
     user = await _uid(client)
     sections = await _sections(app, user, doc_id)
-    third = sections[2]
-    assert third.first_chunk_ordinal is not None and third.last_chunk_ordinal is not None
-    assert third.last_chunk_ordinal > third.first_chunk_ordinal
-    gate = third.first_chunk_ordinal  # read the first chunk of chapter 3 only
+    async with app.state.sessionmaker() as s:
+        await set_rls_user(s, user)
+        await s.execute(text("delete from summaries where section_id = :s"), {"s": sections[2].id})
+        await s.commit()
     cfg = RetrievalConfig(hierarchical=True, broad_k=1, final_k=5)
-    chunks, _ = await _run(app, settings, user, doc_id, "furnace ironwork molten", cfg, gate)
-    assert chunks and all(c.ordinal <= gate for c in chunks)
-    assert any(c.section_id == third.id for c in chunks)
+    chunks, _ = await _run(app, settings, user, doc_id, "furnace ironwork molten", cfg)
+    assert any(c.section_id == sections[2].id for c in chunks)
 
 
 @pytest.mark.usefixtures("user_a")
@@ -227,10 +197,10 @@ async def test_hierarchical_falls_back_to_flat_when_no_summaries(
         await s.execute(text("delete from summaries where document_id = :d"), {"d": doc_id})
         await s.commit()
     cfg = RetrievalConfig(hierarchical=True)
-    chunks, result = await _run(app, settings, user, doc_id, "orchard blossom", cfg, 10_000)
+    chunks, result = await _run(app, settings, user, doc_id, "orchard blossom", cfg)
     assert chunks
     broad = next(s for s in result.stages if s.name == "broad")
-    assert broad.note == "no_visible_summaries_fallback_flat"
+    assert broad.note == "no_summaries_fallback_flat"
 
 
 @pytest.mark.usefixtures("user_a")
@@ -240,11 +210,10 @@ async def test_modes_rerank_and_context_prefix_ablation(
     doc_id = await _ingest(app, client)
     user = await _uid(client)
     sections = await _sections(app, user, doc_id)
-    end = 10_000
 
-    _, vec = await _run(app, settings, user, doc_id, "orchard", RetrievalConfig(mode="vector"), end)
+    _, vec = await _run(app, settings, user, doc_id, "orchard", RetrievalConfig(mode="vector"))
     assert [s.name for s in vec.stages] == ["embed_query", "vector", "final"]
-    _, fts = await _run(app, settings, user, doc_id, "orchard", RetrievalConfig(mode="fts"), end)
+    _, fts = await _run(app, settings, user, doc_id, "orchard", RetrievalConfig(mode="fts"))
     assert [s.name for s in fts.stages] == ["embed_query", "fts", "final"]
 
     chunks, rr = await _run(
@@ -254,37 +223,29 @@ async def test_modes_rerank_and_context_prefix_ablation(
         doc_id,
         "orchard blossom",
         RetrievalConfig(rerank=True),
-        end,
         reranker=FakeReranker(),
     )
     assert "rerank" in [s.name for s in rr.stages]
     assert chunks[0].section_id == sections[1].id
 
     with pytest.raises(RetrievalError, match="reranker_not_configured"):
-        await _run(app, settings, user, doc_id, "x", RetrievalConfig(rerank=True), end)
+        await _run(app, settings, user, doc_id, "x", RetrievalConfig(rerank=True))
 
     plain_cfg = RetrievalConfig(use_context_prefix=False)
     with pytest.raises(RetrievalError, match="plain_embeddings_missing"):
-        await _run(app, settings, user, doc_id, "x", plain_cfg, end)
+        await _run(app, settings, user, doc_id, "x", plain_cfg)
     async with app.state.sessionmaker() as s:  # what STORE_PLAIN_EMBEDDINGS=true would produce
         await set_rls_user(s, user)
         await s.execute(text("update chunks set embedding_plain = embedding"))
         await s.commit()
-    chunks, _ = await _run(app, settings, user, doc_id, "orchard blossom", plain_cfg, end)
+    chunks, _ = await _run(app, settings, user, doc_id, "orchard blossom", plain_cfg)
     assert chunks[0].section_id == sections[1].id
 
 
 @pytest.mark.usefixtures("user_a")
-async def test_reingest_from_stage_keeps_chunks_and_progress(
-    app: FastAPI, client: AsyncClient
-) -> None:
+async def test_reingest_from_stage_keeps_chunks(app: FastAPI, client: AsyncClient) -> None:
     doc_id = await _ingest(app, client)
     user = await _uid(client)
-    sections = await _sections(app, user, doc_id)
-    mid = sections[1].last_chunk_ordinal
-    assert mid is not None
-    put = await client.put(f"/api/v1/documents/{doc_id}/progress", json={"max_ordinal": mid})
-    assert put.status_code == 200
 
     async def chunk_ids() -> list[uuid.UUID]:
         async with app.state.sessionmaker() as s:
@@ -301,7 +262,6 @@ async def test_reingest_from_stage_keeps_chunks_and_progress(
     assert await process_one(app.state.sessionmaker, "h-worker")
     st = (await client.get(f"/api/v1/documents/{doc_id}/status")).json()
     assert st["status"] == "ready" and st["ingest_stage"] == "validate"
-    assert st["max_ordinal"] == mid  # progress untouched
     assert await chunk_ids() == before  # earlier stages were not re-run
     async with app.state.sessionmaker() as s:
         await set_rls_user(s, user)
@@ -310,16 +270,29 @@ async def test_reingest_from_stage_keeps_chunks_and_progress(
 
 
 @pytest.mark.usefixtures("user_a")
-async def test_reingest_from_chunk_preserves_progress_clamped(
+async def test_reingest_from_chunk_rebuilds_and_stays_ready(
     app: FastAPI, client: AsyncClient
 ) -> None:
     doc_id = await _ingest(app, client)
-    await client.put(f"/api/v1/documents/{doc_id}/progress", json={"max_ordinal": 1})
     r = await client.post(f"/api/v1/documents/{doc_id}/reingest", json={"from_stage": "chunk"})
     assert r.status_code == 202
     assert await process_one(app.state.sessionmaker, "h-worker")
     st = (await client.get(f"/api/v1/documents/{doc_id}/status")).json()
-    assert st["status"] == "ready" and st["max_ordinal"] == 1
+    assert st["status"] == "ready"
+
+
+@pytest.mark.usefixtures("user_a")
+async def test_summaries_endpoint_returns_book_and_section_summaries(
+    app: FastAPI, client: AsyncClient
+) -> None:
+    doc_id = await _ingest(app, client)
+    r = await client.get(f"/api/v1/documents/{doc_id}/summaries")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["book"]
+    assert [s["title"] for s in body["sections"]] == [t for t, _ in TOPICS]
+    assert all(s["body"] for s in body["sections"])
+    assert (await client.get(f"/api/v1/documents/{uuid.uuid4()}/summaries")).status_code == 404
 
 
 def test_first_stale_stage() -> None:

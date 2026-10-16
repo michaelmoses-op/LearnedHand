@@ -24,10 +24,9 @@ const S2 = "aaaaaaaa-0000-0000-0000-000000000002";
 const C1 = "cccccccc-0000-0000-0000-000000000001";
 
 const map = {
-  progress: 5,
   sections: [
-    { id: S1, title: "Harbor", ordinal: 0, chunks: 2, fully_read: true },
-    { id: S2, title: "Orchard", ordinal: 1, chunks: 3, fully_read: false },
+    { id: S1, title: "Harbor", ordinal: 0, chunks: 2 },
+    { id: S2, title: "Orchard", ordinal: 1, chunks: 3 },
   ],
   concepts: [
     {
@@ -64,7 +63,7 @@ function renderIt() {
   render(<RouterProvider router={router} />);
 }
 
-test("renders the heat map and shows a trajectory with spoiler-safe notes on select", async () => {
+test("renders the heat map and shows a trajectory with notes on select", async () => {
   server.use(
     http.get(`*/api/v1/documents/${DOC}/concepts`, () => HttpResponse.json(map)),
     http.get(`*/api/v1/documents/${DOC}/concepts/${C1}/trajectory`, () =>
@@ -97,14 +96,13 @@ test("renders the heat map and shows a trajectory with spoiler-safe notes on sel
   expect(row).toHaveAttribute("aria-pressed", "false");
   await userEvent.click(row);
   expect(await screen.findByText("The keeper lights the lamp.")).toBeInTheDocument();
-  expect(screen.getByText("Finish this section to see a note.")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: /Trajectory of lighthouse/ })).toBeInTheDocument();
 });
 
 test("shows an empty state when nothing has been reached", async () => {
   server.use(
     http.get(`*/api/v1/documents/${DOC}/concepts`, () =>
-      HttpResponse.json({ progress: null, sections: [], concepts: [] }),
+      HttpResponse.json({ sections: [], concepts: [] }),
     ),
   );
   renderIt();

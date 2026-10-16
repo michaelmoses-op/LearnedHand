@@ -242,40 +242,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/documents/{document_id}/flashcards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Flashcards */
-        get: operations["list_flashcards_api_v1_documents__document_id__flashcards_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/flashcards/{card_id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Review Flashcard */
-        post: operations["review_flashcard_api_v1_documents__document_id__flashcards__card_id__review_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/documents/{document_id}/notes": {
         parameters: {
             query?: never;
@@ -285,7 +251,7 @@ export interface paths {
         };
         /**
          * List Notes
-         * @description Notes and highlights up to your reading progress; `q` is a full-text search.
+         * @description Notes and highlights for this book; `q` is a full-text search.
          */
         get: operations["list_notes_api_v1_documents__document_id__notes_get"];
         put?: never;
@@ -315,23 +281,6 @@ export interface paths {
         patch: operations["update_note_api_v1_documents__document_id__notes__note_id__patch"];
         trace?: never;
     };
-    "/api/v1/documents/{document_id}/progress": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Put Progress */
-        put: operations["put_progress_api_v1_documents__document_id__progress_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/documents/{document_id}/quality": {
         parameters: {
             query?: never;
@@ -349,40 +298,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/documents/{document_id}/quiz": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Quiz */
-        get: operations["list_quiz_api_v1_documents__document_id__quiz_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/documents/{document_id}/quiz/{question_id}/answer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Answer Quiz */
-        post: operations["answer_quiz_api_v1_documents__document_id__quiz__question_id__answer_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/documents/{document_id}/reingest": {
         parameters: {
             query?: never;
@@ -394,7 +309,7 @@ export interface paths {
         put?: never;
         /**
          * Reingest Document
-         * @description Re-run ingestion from a stage (default: first stale stage). Keeps reading progress.
+         * @description Re-run ingestion from a stage (default: first stale stage).
          */
         post: operations["reingest_document_api_v1_documents__document_id__reingest_post"];
         delete?: never;
@@ -437,20 +352,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/documents/{document_id}/study/generate": {
+    "/api/v1/documents/{document_id}/summaries": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Generate Study Material
-         * @description Flashcards or quiz questions from what you have already read (most recent passages).
+         * List Summaries
+         * @description Book-level and per-section summaries generated at ingestion.
          */
-        post: operations["generate_study_material_api_v1_documents__document_id__study_generate_post"];
+        get: operations["list_summaries_api_v1_documents__document_id__summaries_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -503,20 +418,6 @@ export interface components {
              */
             status: string;
         };
-        /** AnswerIn */
-        AnswerIn: {
-            /** Choice */
-            choice: number;
-        };
-        /** AnswerOut */
-        AnswerOut: {
-            /** Answer Index */
-            answer_index: number;
-            /** Correct */
-            correct: boolean;
-            /** Explanation */
-            explanation: string;
-        };
         /** AskIn */
         AskIn: {
             /**
@@ -533,18 +434,6 @@ export interface components {
             /** Question */
             question: string;
         };
-        /**
-         * ChunkSpanOut
-         * @description Where one chunk (the unit progress is tracked in) sits inside its section's text.
-         */
-        ChunkSpanOut: {
-            /** Char End */
-            char_end: number;
-            /** Char Start */
-            char_start: number;
-            /** Ordinal */
-            ordinal: number;
-        };
         /** ConceptCellOut */
         ConceptCellOut: {
             /** Chunks */
@@ -559,13 +448,11 @@ export interface components {
         };
         /**
          * ConceptMapOut
-         * @description Concept × section heat map, limited to what the reader has reached.
+         * @description Concept × section heat map.
          */
         ConceptMapOut: {
             /** Concepts */
             concepts: components["schemas"]["ConceptRowOut"][];
-            /** Progress */
-            progress: number | null;
             /** Sections */
             sections: components["schemas"]["SectionAxisOut"][];
         };
@@ -602,6 +489,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Error */
+            error?: string | null;
             /** File Size */
             file_size: number;
             /** Format */
@@ -636,8 +525,6 @@ export interface components {
             id: string;
             /** Ingest Stage */
             ingest_stage: string | null;
-            /** Max Ordinal */
-            max_ordinal: number | null;
             /** Status */
             status: string;
             /**
@@ -653,61 +540,6 @@ export interface components {
              * Format: email
              */
             email: string;
-        };
-        /** FlashcardListOut */
-        FlashcardListOut: {
-            /** Items */
-            items: components["schemas"]["FlashcardOut"][];
-        };
-        /** FlashcardOut */
-        FlashcardOut: {
-            /** Back */
-            back: string;
-            /**
-             * Due At
-             * Format: date-time
-             */
-            due_at: string;
-            /** Front */
-            front: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Interval Days */
-            interval_days: number;
-            /** Reps */
-            reps: number;
-            /** Source Ordinal */
-            source_ordinal: number;
-        };
-        /** GenerateIn */
-        GenerateIn: {
-            /**
-             * Count
-             * @default 5
-             */
-            count: number;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "flashcards" | "quiz";
-            /** Section Id */
-            section_id?: string | null;
-        };
-        /** GenerateOut */
-        GenerateOut: {
-            /** Created */
-            created: number;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "flashcards" | "quiz";
-            /** Skipped */
-            skipped: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -750,7 +582,7 @@ export interface components {
         /** NoteOut */
         NoteOut: {
             /** Anchor Ordinal */
-            anchor_ordinal: number;
+            anchor_ordinal: number | null;
             /** Body */
             body: string;
             /**
@@ -788,21 +620,6 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** ProgressIn */
-        ProgressIn: {
-            /** Max Ordinal */
-            max_ordinal: number;
-        };
-        /** ProgressOut */
-        ProgressOut: {
-            /**
-             * Document Id
-             * Format: uuid
-             */
-            document_id: string;
-            /** Max Ordinal */
-            max_ordinal: number;
-        };
         /** QualityReportOut */
         QualityReportOut: {
             /**
@@ -815,46 +632,15 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /** QuizListOut */
-        QuizListOut: {
-            /** Items */
-            items: components["schemas"]["QuizQuestionOut"][];
-        };
-        /** QuizQuestionOut */
-        QuizQuestionOut: {
-            /** Choices */
-            choices: string[];
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Question */
-            question: string;
-            /** Source Ordinal */
-            source_ordinal: number;
-            /** Times Answered */
-            times_answered: number;
-        };
         /** ReingestIn */
         ReingestIn: {
             /** From Stage */
             from_stage?: ("parse" | "sections" | "chunk" | "context" | "embed" | "summaries" | "concepts" | "validate") | null;
         };
-        /** ReviewIn */
-        ReviewIn: {
-            /**
-             * Rating
-             * @enum {string}
-             */
-            rating: "again" | "hard" | "good" | "easy";
-        };
         /** SectionAxisOut */
         SectionAxisOut: {
             /** Chunks */
             chunks: number;
-            /** Fully Read */
-            fully_read: boolean;
             /**
              * Id
              * Format: uuid
@@ -874,8 +660,6 @@ export interface components {
         SectionOut: {
             /** Body */
             body: string | null;
-            /** Chunks */
-            chunks: components["schemas"]["ChunkSpanOut"][];
             /** Depth */
             depth: number;
             /**
@@ -883,14 +667,26 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Last Chunk Ordinal */
-            last_chunk_ordinal: number | null;
             /** Ordinal */
             ordinal: number;
             /** Parent Id */
             parent_id: string | null;
-            /** Readable */
-            readable: boolean;
+            /** Title */
+            title: string;
+        };
+        /** SectionSummaryOut */
+        SectionSummaryOut: {
+            /** Body */
+            body: string;
+            /** Depth */
+            depth: number;
+            /** Ordinal */
+            ordinal: number;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
             /** Title */
             title: string;
         };
@@ -898,6 +694,16 @@ export interface components {
         Status: {
             /** Status */
             status: string;
+        };
+        /**
+         * SummariesOut
+         * @description The book-level summary (null until ingestion has produced it) and one per section.
+         */
+        SummariesOut: {
+            /** Book */
+            book: string | null;
+            /** Sections */
+            sections: components["schemas"]["SectionSummaryOut"][];
         };
         /** TokenRequest */
         TokenRequest: {
@@ -1416,76 +1222,6 @@ export interface operations {
             };
         };
     };
-    list_flashcards_api_v1_documents__document_id__flashcards_get: {
-        parameters: {
-            query?: {
-                due?: boolean;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FlashcardListOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    review_flashcard_api_v1_documents__document_id__flashcards__card_id__review_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                document_id: string;
-                card_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReviewIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FlashcardOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_notes_api_v1_documents__document_id__notes_get: {
         parameters: {
             query?: {
@@ -1622,41 +1358,6 @@ export interface operations {
             };
         };
     };
-    put_progress_api_v1_documents__document_id__progress_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProgressIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProgressOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_quality_report_api_v1_documents__document_id__quality_get: {
         parameters: {
             query?: never;
@@ -1675,75 +1376,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReportOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_quiz_api_v1_documents__document_id__quiz_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QuizListOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    answer_quiz_api_v1_documents__document_id__quiz__question_id__answer_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                document_id: string;
-                question_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnswerIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnswerOut"];
                 };
             };
             /** @description Validation Error */
@@ -1854,7 +1486,7 @@ export interface operations {
             };
         };
     };
-    generate_study_material_api_v1_documents__document_id__study_generate_post: {
+    list_summaries_api_v1_documents__document_id__summaries_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1863,11 +1495,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerateIn"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -1875,7 +1503,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GenerateOut"];
+                    "application/json": components["schemas"]["SummariesOut"];
                 };
             };
             /** @description Validation Error */

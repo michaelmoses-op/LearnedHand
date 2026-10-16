@@ -1,7 +1,7 @@
 """Hierarchical summarisation: leaf sections -> parents -> book, bottom-up.
 
 A summary covers a range of chunk ordinals and is only ever readable once the reader has passed
-`last_ordinal` (spoiler gate; enforced in `retrieval.pipeline` and `SummaryRepository`).
+`last_ordinal` (the chunk range the summary covers).
 Long inputs are map-reduced so no single LLM call exceeds SUMMARY_INPUT_TOKENS.
 """
 

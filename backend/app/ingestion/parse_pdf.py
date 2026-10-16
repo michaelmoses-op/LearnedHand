@@ -12,11 +12,11 @@ from app.core.errors import DomainError
 from app.ingestion import pdf_text
 from app.ingestion.parse_epub import ParsedBook
 
-PDF_TIMEOUT_SECONDS = 120.0
-PDF_MEMORY_MB = 1024
-PDF_MAX_PAGES = 3000
+PDF_TIMEOUT_SECONDS = 600.0  # long scholarly volumes take minutes to extract
+PDF_MEMORY_MB = 2048
+PDF_MAX_PAGES = 5000
 PDF_MAX_OUTPUT_BYTES = 200 * 1024 * 1024
-MIN_TEXT_CHARS = 200  # below this a PDF is treated as image-only (no OCR support)
+MIN_TEXT_CHARS = 200  # below this a PDF is treated as image-only (OCR is not performed)
 
 
 class PdfParseError(DomainError):

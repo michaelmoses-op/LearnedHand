@@ -19,7 +19,7 @@ Native local dev (no Docker required). Runtime DB role is non-owner so RLS appli
 ## Hard requirements (summary)
 - Every resource owned by a user; repositories require an AuthContext; Postgres RLS forced; 404 not 403.
 - Untrusted uploads parsed only in the worker with limits; local storage behind an interface.
-- Book text is untrusted data in prompts; retrieval scoped by user_id + document_id + ordinal <= progress in SQL.
+- Book text is untrusted data in prompts; retrieval scoped by user_id + document_id in SQL (whole-book; no reading-position gate, see ADR 0017).
 - No document text, prompts or tokens in logs. Sanitized Markdown only.
 - RFC 7807 errors with stable `code`; API under /api/v1; generated TS client.
 

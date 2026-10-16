@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 import nh3
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -19,9 +18,8 @@ from app.core.logging import get_logger
 from app.generation.citations import SourceRef, verify_citations
 from app.llm.base import ChatMessage
 from app.llm.factory import build_llm
-from app.models.chunk import Chunk
 from app.prompts import load_prompt
-from app.repositories.content import ProgressRepository, SectionRepository
+from app.repositories.content import SectionRepository
 from app.repositories.documents import DocumentRepository
 from app.retrieval.config import RetrievalConfig
 from app.retrieval.orchestrator import RetrievalOrchestrator
@@ -111,7 +109,7 @@ def build_messages(
 
 
 class AskService:
-    """Progress-gated cited Q&A. Yields SSE-oriented events; no book text in logs."""
+    """Cited Q&A over the whole document. Yields SSE-oriented events; no book text in logs."""
 
     def __init__(
         self,
@@ -223,60 +221,22 @@ class AskService:
         yield AskEvent("done", {"ok": True})
 
 
-async def list_readable_sections(
+async def list_sections(
     session: AsyncSession,
     ctx: AuthContext,
     document_id: uuid.UUID,
 ) -> list[dict[str, Any]]:
-    """Sections for the reader. Body omitted when the section's first chunk would be past progress.
-
-    Section ordinal is structural; progress gates on chunk ordinal. We expose body only when
-    the section has at least one chunk with ordinal <= progress (or progress is end-of-book).
-    """
-    doc = await DocumentRepository(session, ctx).get(document_id)
-    if doc is None:
+    """Sections of the document with their full text, in reading order."""
+    if await DocumentRepository(session, ctx).get(document_id) is None:
         raise NotFoundError("Document not found")
-    progress_row = await ProgressRepository(session, ctx).get(document_id)
-    gate = progress_row.max_ordinal if progress_row is not None else -1
-    sections = await SectionRepository(session, ctx).list_for_document(document_id)
-    min_ords = {
-        row.section_id: row.min_ord
-        for row in (
-            await session.execute(
-                select(Chunk.section_id, func.min(Chunk.ordinal).label("min_ord"))
-                .where(
-                    Chunk.user_id == ctx.user_id,
-                    Chunk.document_id == document_id,
-                )
-                .group_by(Chunk.section_id)
-            )
-        ).all()
-    }
-    spans: dict[uuid.UUID, list[dict[str, int]]] = {}
-    span_rows = await session.execute(
-        select(Chunk.section_id, Chunk.ordinal, Chunk.char_start, Chunk.char_end)
-        .where(Chunk.user_id == ctx.user_id, Chunk.document_id == document_id)
-        .order_by(Chunk.ordinal)
-    )
-    for section_id, ordinal, start, end in span_rows.all():
-        spans.setdefault(section_id, []).append(
-            {"ordinal": ordinal, "char_start": start, "char_end": end}
-        )
-    out: list[dict[str, Any]] = []
-    for s in sections:
-        min_ord = min_ords.get(s.id)
-        readable = min_ord is not None and min_ord <= gate
-        out.append(
-            {
-                "id": s.id,
-                "parent_id": s.parent_id,
-                "ordinal": s.ordinal,
-                "depth": s.depth,
-                "title": s.title,
-                "body": s.body if readable else None,
-                "readable": readable,
-                "last_chunk_ordinal": s.last_chunk_ordinal,
-                "chunks": spans.get(s.id, []) if readable else [],
-            }
-        )
-    return out
+    return [
+        {
+            "id": s.id,
+            "parent_id": s.parent_id,
+            "ordinal": s.ordinal,
+            "depth": s.depth,
+            "title": s.title,
+            "body": s.body,
+        }
+        for s in await SectionRepository(session, ctx).list_for_document(document_id)
+    ]

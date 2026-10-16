@@ -2,7 +2,7 @@
 
 The classifier is an LLM call with a small structured output. It only *chooses among strategies
 we define*; it never sees book text and cannot widen access: every strategy is still gated by
-user, document and reading progress in SQL. Any failure falls back to the default strategy.
+user and document in SQL. Any failure falls back to the default strategy.
 """
 
 from __future__ import annotations
@@ -70,19 +70,18 @@ def strategy_for(base: RetrievalConfig, label: str) -> RetrievalConfig:
 
 
 async def find_concept_sections(
-    repo: ConceptRepository, document_id: uuid.UUID, progress: int, question: str, hint: str | None
+    repo: ConceptRepository, document_id: uuid.UUID, question: str, hint: str | None
 ) -> list[uuid.UUID]:
-    """Sections where the concept named in the question appears — among concepts the reader has
-    already reached (progress-gated), so an unread concept cannot be inferred from this."""
+    """Sections where the concept named in the question appears."""
     haystack = f" {concept_key(question)} "
     hint_key = concept_key(hint) if hint else ""
     best: tuple[int, uuid.UUID] | None = None
-    for stat in await repo.list_visible(document_id, progress):
+    for stat in await repo.list_concepts(document_id):
         key = stat.concept.key
         matches = f" {key} " in haystack or (hint_key and key == hint_key)
         if matches and (best is None or len(key) > best[0]):
             best = (len(key), stat.concept.id)
     if best is None:
         return []
-    mentions = await repo.mentions_visible(document_id, progress, best[1])
+    mentions = await repo.mentions(document_id, best[1])
     return list(dict.fromkeys(m.section_id for m in mentions))

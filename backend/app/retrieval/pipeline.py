@@ -3,10 +3,9 @@
 Stages (each optional per `RetrievalConfig`):
   embed_query → [broad (summaries)] → vector / fts → fuse (RRF) → [rerank] → final
 
-Spoiler gate: every chunk query is scoped to `ordinal <= progress`; summaries are only eligible
-when `last_ordinal <= progress`. Hierarchical drill-down additionally covers the "frontier" —
-sections whose summary is not yet visible (unfinished or unsummarised) — so partially read
-sections are never skipped, and nothing beyond `progress` is ever reachable.
+Scope: every chunk query is restricted to the caller's user_id and the one document_id (the
+isolation guarantee). Retrieval runs over the whole book. Hierarchical drill-down also covers
+sections that have no summary, so an unsummarised section is never skipped.
 """
 
 from __future__ import annotations
@@ -28,7 +27,6 @@ from app.llm.factory import build_llm
 from app.llm.rerank import build_reranker
 from app.models.chunk import Chunk
 from app.models.summary import Summary
-from app.repositories.content import ProgressRepository
 from app.retrieval.config import RetrievalConfig
 from app.retrieval.rrf import reciprocal_rank_fusion
 from app.retrieval.types import (
@@ -46,14 +44,9 @@ def _scoped[T](
     *,
     user_id: uuid.UUID,
     document_id: uuid.UUID,
-    progress: int,
 ) -> Select[T]:
-    """Every chunk query must include user, document, and ordinal <= progress."""
-    return stmt.where(
-        Chunk.user_id == user_id,
-        Chunk.document_id == document_id,
-        Chunk.ordinal <= progress,
-    )
+    """Every chunk query must include user and document."""
+    return stmt.where(Chunk.user_id == user_id, Chunk.document_id == document_id)
 
 
 _TS_TOKEN = re.compile(r"\w+", re.UNICODE)
@@ -94,34 +87,23 @@ class RetrievalPipeline:
         self._llm = build_llm(settings, session, ctx, document_id=document_id, stage="retrieve")
         self._reranker = reranker if reranker is not None else build_reranker(settings)
 
-    async def resolve_progress(self, document_id: uuid.UUID) -> int:
-        row = await ProgressRepository(self._session, self._ctx).get(document_id)
-        if row is None:
-            # No progress row ⇒ nothing readable (safer than opening the whole book).
-            return -1
-        return row.max_ordinal
-
     async def run(
         self,
         *,
         document_id: uuid.UUID,
         query: str,
         config: RetrievalConfig | None = None,
-        progress: int | None = None,
         scope_sections: Sequence[uuid.UUID] | None = None,
     ) -> RetrievalResult:
         """`scope_sections` restricts candidates to those sections (e.g. where a concept appears);
-        it narrows the search but can never widen it past the progress gate."""
+        it only narrows the search, never widens it past the user/document scope."""
         cfg = config or RetrievalConfig.from_settings(self._settings)
         if not query.strip():
             raise RetrievalError("empty_query")
         if cfg.rerank and self._reranker is None:
             raise RetrievalError("reranker_not_configured")
 
-        gate = progress if progress is not None else await self.resolve_progress(document_id)
         stages: list[StageTrace] = []
-        if gate < 0:
-            return RetrievalResult(chunks=[], stages=stages, progress=gate)
 
         if not cfg.use_context_prefix and not await self._has_plain_embeddings(document_id):
             raise RetrievalError("plain_embeddings_missing")
@@ -140,12 +122,12 @@ class RetrievalPipeline:
         scope: ColumnElement[bool] | None = None
         if cfg.hierarchical:
             timer = _Timer()
-            picked, has_visible = await self._broad(document_id, qvec, gate, cfg.broad_k)
+            picked, has_visible = await self._broad(document_id, qvec, cfg.broad_k)
             if has_visible:
-                scope = await self._drill_scope(document_id, gate, picked)
+                scope = await self._drill_scope(document_id, picked)
                 note = ""
             else:
-                note = "no_visible_summaries_fallback_flat"
+                note = "no_summaries_fallback_flat"
             stages.append(
                 StageTrace(
                     "broad",
@@ -164,12 +146,12 @@ class RetrievalPipeline:
         ranked: list[list[uuid.UUID]] = []
         if cfg.mode in ("vector", "hybrid"):
             timer = _Timer()
-            ids = await self._vector_search(document_id, qvec, gate, cfg, scope)
+            ids = await self._vector_search(document_id, qvec, cfg, scope)
             stages.append(StageTrace("vector", timer.ms(), len(ids), ids=ids))
             ranked.append(ids)
         if cfg.mode in ("fts", "hybrid"):
             timer = _Timer()
-            ids = await self._fts_search(document_id, query, gate, cfg, scope)
+            ids = await self._fts_search(document_id, query, cfg, scope)
             stages.append(StageTrace("fts", timer.ms(), len(ids), ids=ids))
             ranked.append(ids)
 
@@ -181,7 +163,7 @@ class RetrievalPipeline:
         # -- rerank --
         pool_n = cfg.rerank_pool if cfg.rerank else cfg.final_k
         pool = fused[: max(pool_n, cfg.final_k)]
-        by_id = await self._load_chunks(document_id, gate, [cid for cid, _ in pool])
+        by_id = await self._load_chunks(document_id, [cid for cid, _ in pool])
         ordered: list[tuple[uuid.UUID, float]] = [(cid, s) for cid, s in pool if cid in by_id]
         if cfg.rerank and self._reranker is not None and ordered:
             timer = _Timer()
@@ -198,8 +180,6 @@ class RetrievalPipeline:
         out: list[RetrievedChunk] = []
         for cid, score in final:
             chunk = by_id[cid]
-            if chunk.ordinal > gate:  # defense in depth: never return past the gate
-                continue
             out.append(
                 RetrievedChunk(
                     chunk_id=chunk.id,
@@ -216,11 +196,10 @@ class RetrievalPipeline:
             "retrieve_done",
             document_id=str(document_id),
             config=cfg.name,
-            progress=gate,
             returned=len(out),
             stages={s.name: round(s.duration_ms, 1) for s in stages},
         )
-        return RetrievalResult(chunks=out, stages=stages, progress=gate)
+        return RetrievalResult(chunks=out, stages=stages)
 
     # ---- stages ------------------------------------------------------------------------------
 
@@ -235,14 +214,13 @@ class RetrievalPipeline:
         return bool((await self._session.execute(stmt)).scalar_one())
 
     async def _broad(
-        self, document_id: uuid.UUID, qvec: list[float], progress: int, k: int
+        self, document_id: uuid.UUID, qvec: list[float], k: int
     ) -> tuple[list[tuple[uuid.UUID | None, int, int]], bool]:
-        """Nearest visible section summaries → (section_id, first_ordinal, last_ordinal)."""
+        """Nearest section summaries → (section_id, first_ordinal, last_ordinal)."""
         visible = (
             Summary.user_id == self._ctx.user_id,
             Summary.document_id == document_id,
             Summary.kind == "section",
-            Summary.last_ordinal <= progress,  # spoiler gate for summaries
         )
         has_visible = bool(
             (await self._session.execute(select(exists().where(*visible)))).scalar_one()
@@ -261,15 +239,13 @@ class RetrievalPipeline:
     async def _drill_scope(
         self,
         document_id: uuid.UUID,
-        progress: int,
         picked: Sequence[tuple[uuid.UUID | None, int, int]],
     ) -> ColumnElement[bool]:
-        """Chunks inside picked ranges, plus every chunk of sections with no visible summary."""
+        """Chunks inside picked ranges, plus every chunk of sections with no summary."""
         summarised = select(Summary.section_id).where(
             Summary.user_id == self._ctx.user_id,
             Summary.document_id == document_id,
             Summary.kind == "section",
-            Summary.last_ordinal <= progress,
             Summary.section_id.is_not(None),
         )
         frontier = Chunk.section_id.not_in(summarised)
@@ -280,7 +256,6 @@ class RetrievalPipeline:
         self,
         document_id: uuid.UUID,
         qvec: list[float],
-        progress: int,
         cfg: RetrievalConfig,
         scope: ColumnElement[bool] | None,
     ) -> list[uuid.UUID]:
@@ -289,7 +264,6 @@ class RetrievalPipeline:
             select(Chunk.id).order_by(col.cosine_distance(qvec)).limit(cfg.candidate_k),
             user_id=self._ctx.user_id,
             document_id=document_id,
-            progress=progress,
         ).where(col.is_not(None))
         if scope is not None:
             stmt = stmt.where(scope)
@@ -299,7 +273,6 @@ class RetrievalPipeline:
         self,
         document_id: uuid.UUID,
         query: str,
-        progress: int,
         cfg: RetrievalConfig,
         scope: ColumnElement[bool] | None,
     ) -> list[uuid.UUID]:
@@ -316,7 +289,6 @@ class RetrievalPipeline:
                 select(Chunk.id),
                 user_id=self._ctx.user_id,
                 document_id=document_id,
-                progress=progress,
             )
             .where(vector.op("@@")(ts_query))
             .order_by(func.ts_rank_cd(vector, ts_query).desc())
@@ -327,7 +299,7 @@ class RetrievalPipeline:
         return [row[0] for row in (await self._session.execute(stmt)).all()]
 
     async def _load_chunks(
-        self, document_id: uuid.UUID, progress: int, chunk_ids: list[uuid.UUID]
+        self, document_id: uuid.UUID, chunk_ids: list[uuid.UUID]
     ) -> dict[uuid.UUID, Chunk]:
         if not chunk_ids:
             return {}
@@ -335,6 +307,5 @@ class RetrievalPipeline:
             select(Chunk).where(Chunk.id.in_(chunk_ids)),
             user_id=self._ctx.user_id,
             document_id=document_id,
-            progress=progress,
         )
         return {c.id: c for c in (await self._session.execute(stmt)).scalars()}

@@ -17,8 +17,7 @@ _NOW = sql_text("now()")
 
 
 class Summary(Base):
-    """Spoiler rule: a summary is only readable when `last_ordinal <= progress`, i.e. the
-    reader has passed everything it summarises."""
+    """A section or whole-book summary; `first/last_ordinal` = the chunk range it covers."""
 
     __tablename__ = "summaries"
     __table_args__ = (

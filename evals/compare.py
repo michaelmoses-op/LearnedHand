@@ -27,7 +27,6 @@ MAIN_COLUMNS: list[tuple[str, str, bool | None, str]] = [
     ("ctx points", "context_point_coverage", True, "{:.2f}"),
     ("answer points (judge)", "answer_point_coverage", True, "{:.2f}"),
     ("citation ok", "citation_validity", True, "{:.2f}"),
-    ("spoiler leaks", "spoiler_leaks", False, "{:.0f}"),
     ("p50 ms", "latency_ms_p50", False, "{:.1f}"),
     ("p95 ms", "latency_ms_p95", False, "{:.1f}"),
     ("tokens", "_tokens", False, "{:,.0f}"),

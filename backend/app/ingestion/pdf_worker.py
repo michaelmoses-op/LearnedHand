@@ -35,7 +35,9 @@ def _fail(reason: str) -> int:
 def extract(data: bytes, max_pages: int) -> dict[str, Any]:
     pymupdf: Any = importlib.import_module("pymupdf")
     doc: Any = pymupdf.open(stream=data, filetype="pdf")
-    if doc.needs_pass or doc.is_encrypted:
+    # Only PDFs that need a password to open are refused. Many scholarly PDFs are "encrypted"
+    # with an owner password only (to restrict printing/copying); they open with no password.
+    if doc.needs_pass:
         raise ValueError("pdf_encrypted")
     if doc.page_count > max_pages:
         raise ValueError("pdf_too_many_pages")
@@ -70,9 +72,9 @@ def extract(data: bytes, max_pages: int) -> dict[str, Any]:
 def main() -> int:
     import os
 
-    mem_mb = int(os.environ.get("PDF_WORKER_MEMORY_MB", "1024"))
+    mem_mb = int(os.environ.get("PDF_WORKER_MEMORY_MB", "2048"))
     cpu_s = int(os.environ.get("PDF_WORKER_CPU_SECONDS", "60"))
-    max_pages = int(os.environ.get(MAX_PAGES_ENV, "3000"))
+    max_pages = int(os.environ.get(MAX_PAGES_ENV, "5000"))
     data = sys.stdin.buffer.read()
     _limit(mem_mb * 1024 * 1024, cpu_s)
     try:

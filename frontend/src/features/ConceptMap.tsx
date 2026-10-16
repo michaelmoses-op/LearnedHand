@@ -7,7 +7,7 @@ const LABEL_W = 150;
 const ROW_H = 26;
 const HEADER_H = 8;
 
-/** Heat map: one row per concept, one column per section the reader has reached. */
+/** Heat map: one row per concept, one column per section. */
 export function Heatmap({
   data,
   selected,
@@ -109,7 +109,7 @@ function HeatRow({
   );
 }
 
-/** Line chart of a concept's presence across the reached sections, plus per-section notes. */
+/** Line chart of a concept's presence across the sections, plus per-section notes. */
 function TrajectoryPanel({ documentId, conceptId }: { documentId: string; conceptId: string }) {
   const q = useTrajectory(documentId, conceptId);
   const map = useConceptMap(documentId);
@@ -161,9 +161,7 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
             <span className="muted">
               ({p.chunks} passage{p.chunks === 1 ? "" : "s"})
             </span>
-            <p className={p.note ? "" : "muted italic"}>
-              {p.note ?? "Finish this section to see a note."}
-            </p>
+            {p.note && <p>{p.note}</p>}
           </li>
         ))}
       </ol>
@@ -178,8 +176,8 @@ export function ConceptMap({ documentId }: { documentId: string }) {
     <article>
       <h3 className="text-xl font-semibold">Concepts</h3>
       <p className="muted mb-4 text-sm">
-        Ideas and how strongly each appears in the sections you have reached. Select a row to see
-        how that concept develops. Nothing beyond your reading position is shown.
+        Ideas and how strongly each appears in every section. Select a row to see how that concept
+        develops through the book.
       </p>
       {map.isPending && <p role="status">Loading…</p>}
       {map.isError && (
@@ -189,8 +187,7 @@ export function ConceptMap({ documentId }: { documentId: string }) {
       )}
       {map.data && map.data.concepts.length === 0 && (
         <p role="status" className="notice">
-          No concepts yet. Set your reading progress, and make sure the book has finished
-          processing.
+          No concepts yet. Make sure the book has finished processing.
         </p>
       )}
       {map.data && map.data.concepts.length > 0 && (

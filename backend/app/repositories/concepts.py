@@ -1,4 +1,4 @@
-"""AuthContext-scoped concept repository. Visibility (spoiler) rules live here, in SQL."""
+"""AuthContext-scoped concept repository. Always scoped by user and document."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from app.models.concept import Concept, ConceptMention
 @dataclass(frozen=True, slots=True)
 class ConceptStat:
     concept: Concept
-    sections: int  # visible mentions (sections where it appears, up to progress)
-    chunks: int  # chunks mentioning it, up to progress
+    sections: int  # sections where it appears
+    chunks: int  # chunks mentioning it
 
 
 class ConceptRepository:
@@ -44,8 +44,8 @@ class ConceptRepository:
             self.session.add(mention)
         await self.session.flush()
 
-    async def list_visible(self, document_id: uuid.UUID, progress: int) -> list[ConceptStat]:
-        """Concepts with at least one appearance at or before `progress`."""
+    async def list_concepts(self, document_id: uuid.UUID) -> list[ConceptStat]:
+        """All concepts of the document with their section/chunk counts."""
         m = ConceptMention
         stmt = (
             select(Concept, func.count(m.id), func.coalesce(func.sum(m.mention_chunks), 0))
@@ -54,7 +54,6 @@ class ConceptRepository:
                 Concept.user_id == self.ctx.user_id,
                 Concept.document_id == document_id,
                 m.user_id == self.ctx.user_id,
-                m.first_ordinal <= progress,
             )
             .group_by(Concept.id)
             .order_by(Concept.first_ordinal, Concept.name)
@@ -62,26 +61,21 @@ class ConceptRepository:
         rows = (await self.session.execute(stmt)).all()
         return [ConceptStat(c, int(n), int(k)) for c, n, k in rows]
 
-    async def get_visible(
-        self, document_id: uuid.UUID, concept_id: uuid.UUID, progress: int
-    ) -> Concept | None:
+    async def get(self, document_id: uuid.UUID, concept_id: uuid.UUID) -> Concept | None:
         stmt = select(Concept).where(
             Concept.user_id == self.ctx.user_id,
             Concept.document_id == document_id,
             Concept.id == concept_id,
-            Concept.first_ordinal <= progress,
         )
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def mentions_visible(
-        self, document_id: uuid.UUID, progress: int, concept_id: uuid.UUID | None = None
+    async def mentions(
+        self, document_id: uuid.UUID, concept_id: uuid.UUID | None = None
     ) -> list[ConceptMention]:
-        """Mentions whose first appearance is at or before `progress`, in book order.
-        Callers must blank `note` when `section_last_ordinal > progress`."""
+        """Mentions in book order."""
         stmt = select(ConceptMention).where(
             ConceptMention.user_id == self.ctx.user_id,
             ConceptMention.document_id == document_id,
-            ConceptMention.first_ordinal <= progress,
         )
         if concept_id is not None:
             stmt = stmt.where(ConceptMention.concept_id == concept_id)

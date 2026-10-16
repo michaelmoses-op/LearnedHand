@@ -21,7 +21,6 @@ ids, metrics and timings only — no book text, prompts or answers.
 | ctx points | Expected facts present (lexically) in the retrieved context — retrieval sufficiency |
 | answer points (judge) | LLM-as-judge: expected facts stated in the answer (real provider only) |
 | citation ok | Share of `[n]` markers that point at an existing source |
-| spoiler leaks | Retrieved chunks past the reading position or containing a `forbidden_snippets` text (must be 0) |
 | p50/p95 ms, tokens, cost | Latency, token use, cost from `PRICE_*_PER_MTOK` settings |
 
 With `LLM_PROVIDER=fake` (default) the vectors are a lexical stand-in, summaries are extractive and

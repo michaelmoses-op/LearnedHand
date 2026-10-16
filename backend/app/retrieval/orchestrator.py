@@ -48,25 +48,18 @@ class RetrievalOrchestrator:
         *,
         query: str,
         config: RetrievalConfig | None = None,
-        progress: int | None = None,
         route: bool = False,
     ) -> RetrievalResult:
         cfg = config or RetrievalConfig.from_settings(self._settings)
-        gate = (
-            progress
-            if progress is not None
-            else await self.pipeline.resolve_progress(self._document_id)
-        )
         label: str | None = None
         scope: list[uuid.UUID] | None = None
-        if route and gate >= 0:
+        if route:
             cls = await classify_question(self._route_llm, self._settings, query)
             label = cls.label
             if cls.label == "concept":
                 sections = await find_concept_sections(
                     ConceptRepository(self._session, self._ctx),
                     self._document_id,
-                    gate,
                     query,
                     cls.concept,
                 )
@@ -82,7 +75,6 @@ class RetrievalOrchestrator:
             document_id=self._document_id,
             query=query,
             config=cfg,
-            progress=gate,
             scope_sections=scope,
         )
         result.route = label

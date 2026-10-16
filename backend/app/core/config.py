@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(min_length=32)
     access_token_ttl_minutes: int = Field(default=15, ge=1)
     refresh_token_ttl_days: int = Field(default=30, ge=1)
-    max_upload_bytes: int = Field(default=100 * 1024 * 1024, ge=1024)
+    max_upload_bytes: int = Field(default=250 * 1024 * 1024, ge=1024)
     rate_limit_enabled: bool = True
     frontend_base_url: str = "http://localhost:5173"
 

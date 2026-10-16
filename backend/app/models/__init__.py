@@ -5,9 +5,8 @@ from app.models.document import Document
 from app.models.eval import EvalResult, EvalRun
 from app.models.job import Job
 from app.models.llm_call import LlmCall
-from app.models.progress import DocumentProgress
+from app.models.notes import Note
 from app.models.section import Section
-from app.models.study import Flashcard, Note, QuizQuestion
 from app.models.summary import Summary
 from app.models.user import AuthIdentity, EmailToken, RefreshToken, User
 
@@ -22,11 +21,9 @@ __all__ = [
     "EmailToken",
     "EvalResult",
     "EvalRun",
-    "Flashcard",
     "Job",
     "LlmCall",
     "Note",
-    "QuizQuestion",
     "RefreshToken",
     "Section",
     "Summary",

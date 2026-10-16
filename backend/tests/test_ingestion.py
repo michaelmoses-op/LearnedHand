@@ -20,7 +20,7 @@ from app.ingestion.pipeline import run_ingest
 from app.jobs.worker import process_one
 from app.models.job import Job
 from app.models.section import Section
-from app.repositories.content import ChunkRepository, ProgressRepository
+from app.repositories.content import ChunkRepository
 from tests.conftest import _asyncpg_dsn
 from tests.epub_fixture import make_epub
 
@@ -49,7 +49,7 @@ def test_parse_rejects_path_traversal() -> None:
 
 
 def test_parse_rejects_oversized_entry() -> None:
-    big = b"a" * (9 * 1024 * 1024)
+    big = b"a" * (49 * 1024 * 1024)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("mimetype", "application/epub+zip")
@@ -94,9 +94,7 @@ async def test_upload_enqueues_ingest_and_status(app: FastAPI, client: AsyncClie
 
 
 @pytest.mark.usefixtures("user_a")
-async def test_ingest_pipeline_ready_with_progress_at_end(
-    app: FastAPI, client: AsyncClient, settings: Settings
-) -> None:
+async def test_ingest_pipeline_ready(app: FastAPI, client: AsyncClient, settings: Settings) -> None:
     epub = make_epub()
     doc_id = (
         await client.post("/api/v1/documents", content=epub, headers={"X-Filename": "book.epub"})
@@ -108,7 +106,6 @@ async def test_ingest_pipeline_ready_with_progress_at_end(
     assert st["status"] == "ready"
     assert st["ingest_stage"] == "validate"
     assert st["error"] is None
-    assert st["max_ordinal"] is not None and st["max_ordinal"] >= 0
 
     user_id = await _uid(client)
     async with app.state.sessionmaker() as session:
@@ -128,9 +125,6 @@ async def test_ingest_pipeline_ready_with_progress_at_end(
             c.embedding is not None and len(c.embedding) == settings.embedding_dim for c in chunks
         )
         assert all(c.context_prefix for c in chunks)
-        progress = await ProgressRepository(session, ctx).get(uuid.UUID(doc_id))
-        assert progress is not None
-        assert progress.max_ordinal == max(c.ordinal for c in chunks)
 
 
 @pytest.mark.usefixtures("user_a")

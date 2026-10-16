@@ -6,6 +6,7 @@ import io
 import posixpath
 import zipfile
 from dataclasses import dataclass, field
+from urllib.parse import unquote
 
 from lxml import etree
 
@@ -15,6 +16,7 @@ from app.ingestion.constants import (
     EPUB_MAX_FILE_BYTES,
     EPUB_MAX_FILES,
     EPUB_MAX_UNCOMPRESSED_BYTES,
+    EPUB_RATIO_MIN_BYTES,
 )
 
 _CONTAINER_NS = {"c": "urn:oasis:names:tc:opendocument:xmlns:container"}
@@ -23,6 +25,25 @@ _OPF_NS = {
     "dc": "http://purl.org/dc/elements/1.1/",
 }
 _XHTML_NS = {"h": "http://www.w3.org/1999/xhtml"}
+_NCX_NS = {"n": "http://www.daisy.org/z3986/2005/ncx/"}
+_ENC_NS = {
+    "e": "urn:oasis:names:tc:opendocument:xmlns:container",
+    "x": "http://www.w3.org/2001/04/xmlenc#",
+}
+# Font obfuscation is ubiquitous and harmless; any other cipher on a text file means real DRM.
+_FONT_OBFUSCATION = {"http://www.idpf.org/2008/embedding", "http://ns.adobe.com/pdf/enc#RC"}
+
+
+def _xml_parser() -> etree.XMLParser:
+    """Hardened: no entity expansion, no DTD loading, no network."""
+    return etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True, huge_tree=False)
+
+
+def _parse_xml(raw: bytes, what: str) -> etree._Element:
+    try:
+        return etree.fromstring(raw, parser=_xml_parser())
+    except etree.XMLSyntaxError as exc:
+        raise EpubParseError(f"Invalid {what}") from exc
 
 
 class EpubParseError(DomainError):
@@ -61,35 +82,53 @@ def parse_epub(data: bytes) -> ParsedBook:
 
     with zf:
         _assert_safe_zip(zf)
-        opf_path = _opf_path(zf)
+        names = _NameIndex(zf)
+        opf_path = _opf_path(zf, names)
         opf_dir = posixpath.dirname(opf_path)
-        opf = etree.fromstring(_read_member(zf, opf_path))
+        opf = _parse_xml(_read_member(zf, names, opf_path), "package document")
         title = _dc_title(opf) or "Untitled"
         manifest = _manifest(opf)
-        spine_ids = _spine_ids(opf)
+        spine_paths: list[tuple[str, str]] = []  # (manifest href, resolved path)
+        for item_id in _spine_ids(opf):
+            item = manifest.get(item_id)
+            if item is None:
+                continue
+            full = _safe_join(opf_dir, item.href)
+            if _is_xhtml(full, item.media_type):
+                spine_paths.append((item.href, full))
+        _reject_drm(zf, names, {full for _, full in spine_paths})
+        toc = _toc_titles(zf, names, opf, manifest, opf_dir)
         sections: list[ParsedSection] = []
-        for item_id in spine_ids:
-            href = manifest.get(item_id)
-            if not href:
+        skipped = 0
+        for href, full in spine_paths:
+            raw = _try_read(zf, names, full)
+            if raw is None:  # listed in the spine but absent: skip it, keep the rest of the book
+                skipped += 1
                 continue
-            full = _safe_join(opf_dir, href)
-            if not _is_xhtml(full):
-                continue
-            raw = _read_member(zf, full)
             text, heading = _xhtml_text(raw)
             if not text.strip():
                 continue
+            label = toc.get(full) or heading or posixpath.basename(href)
             sections.append(
-                ParsedSection(
-                    title=(heading or posixpath.basename(href))[:500],
-                    spine_href=full[:1000],
-                    text=text,
-                    depth=0,
-                )
+                ParsedSection(title=label[:500], spine_href=full[:1000], text=text, depth=0)
             )
         if not sections:
             raise EpubParseError("EPUB has no readable text sections")
-        return ParsedBook(title=title[:200], sections=sections)
+        stats = {"skipped_missing_items": skipped} if skipped else {}
+        return ParsedBook(title=title[:200], sections=sections, stats=stats)
+
+
+class _NameIndex:
+    """Zip member lookup tolerant of case differences between the manifest and the archive."""
+
+    def __init__(self, zf: zipfile.ZipFile) -> None:
+        self.exact = set(zf.namelist())
+        self.lower = {n.lower(): n for n in self.exact}
+
+    def resolve(self, name: str) -> str | None:
+        if name in self.exact:
+            return name
+        return self.lower.get(name.lower())
 
 
 def _assert_safe_zip(zf: zipfile.ZipFile) -> None:
@@ -104,7 +143,8 @@ def _assert_safe_zip(zf: zipfile.ZipFile) -> None:
         if info.file_size > EPUB_MAX_FILE_BYTES:
             raise EpubParseError("EPUB entry too large")
         if (
-            info.compress_size > 0
+            info.file_size > EPUB_RATIO_MIN_BYTES
+            and info.compress_size > 0
             and info.file_size / info.compress_size > EPUB_MAX_COMPRESSION_RATIO
         ):
             raise EpubParseError("Suspicious compression ratio")
@@ -113,25 +153,29 @@ def _assert_safe_zip(zf: zipfile.ZipFile) -> None:
             raise EpubParseError("EPUB uncompressed size too large")
 
 
-def _read_member(zf: zipfile.ZipFile, name: str) -> bytes:
-    try:
-        data = zf.read(name)
-    except KeyError as exc:
-        raise EpubParseError("Missing EPUB member") from exc
+def _try_read(zf: zipfile.ZipFile, names: _NameIndex, name: str) -> bytes | None:
+    real = names.resolve(name)
+    if real is None:
+        return None
+    data = zf.read(real)
     if len(data) > EPUB_MAX_FILE_BYTES:
         raise EpubParseError("EPUB entry too large after inflate")
     return data
 
 
-def _opf_path(zf: zipfile.ZipFile) -> str:
-    try:
-        container = etree.fromstring(_read_member(zf, "META-INF/container.xml"))
-    except etree.XMLSyntaxError as exc:
-        raise EpubParseError("Invalid container.xml") from exc
+def _read_member(zf: zipfile.ZipFile, names: _NameIndex, name: str) -> bytes:
+    data = _try_read(zf, names, name)
+    if data is None:
+        raise EpubParseError("Missing EPUB member")
+    return data
+
+
+def _opf_path(zf: zipfile.ZipFile, names: _NameIndex) -> str:
+    container = _parse_xml(_read_member(zf, names, "META-INF/container.xml"), "container.xml")
     rootfile = container.find(".//c:rootfile", _CONTAINER_NS)
     if rootfile is None or not rootfile.get("full-path"):
         raise EpubParseError("Missing rootfile in container.xml")
-    path = str(rootfile.get("full-path") or "").replace("\\", "/")
+    path = unquote(str(rootfile.get("full-path") or "")).replace("\\", "/")
     if path.startswith("/") or ".." in path.split("/"):
         raise EpubParseError("Unsafe rootfile path")
     return path
@@ -144,13 +188,24 @@ def _dc_title(opf: etree._Element) -> str | None:
     return None
 
 
-def _manifest(opf: etree._Element) -> dict[str, str]:
-    out: dict[str, str] = {}
+@dataclass(frozen=True)
+class _Item:
+    href: str
+    media_type: str
+    properties: str
+
+
+def _manifest(opf: etree._Element) -> dict[str, _Item]:
+    out: dict[str, _Item] = {}
     for item in opf.findall(".//opf:manifest/opf:item", _OPF_NS):
         item_id = item.get("id")
         href = item.get("href")
         if item_id and href:
-            out[item_id] = href.replace("\\", "/")
+            out[item_id] = _Item(
+                href.replace("\\", "/"),
+                (item.get("media-type") or "").lower(),
+                item.get("properties") or "",
+            )
     return out
 
 
@@ -165,16 +220,92 @@ def _spine_ids(opf: etree._Element) -> list[str]:
 
 def _safe_join(base: str, href: str) -> str:
     # Strip fragment / query; resolve relative to OPF dir without escaping the package root.
-    href = href.split("#", 1)[0].split("?", 1)[0].replace("\\", "/")
+    href = unquote(href.split("#", 1)[0].split("?", 1)[0]).replace("\\", "/")
     joined = posixpath.normpath(posixpath.join(base, href) if base else href)
     if joined.startswith("..") or joined.startswith("/"):
         raise EpubParseError("Path traversal in spine href")
     return joined
 
 
-def _is_xhtml(path: str) -> bool:
-    lower = path.lower()
-    return lower.endswith((".xhtml", ".html", ".htm", ".xml"))
+def _is_xhtml(path: str, media_type: str = "") -> bool:
+    if media_type in ("application/xhtml+xml", "text/html"):
+        return True
+    return path.lower().endswith((".xhtml", ".html", ".htm", ".xml"))
+
+
+def _reject_drm(zf: zipfile.ZipFile, names: _NameIndex, content_paths: set[str]) -> None:
+    """Fail clearly (rather than ingest ciphertext) when a text file is DRM-encrypted."""
+    raw = _try_read(zf, names, "META-INF/encryption.xml")
+    if raw is None:
+        return
+    try:
+        root = etree.fromstring(raw, parser=_xml_parser())
+    except etree.XMLSyntaxError:
+        return
+    lowered = {p.lower() for p in content_paths}
+    for data in root.iterfind(".//x:EncryptedData", _ENC_NS):
+        method = data.find("x:EncryptionMethod", _ENC_NS)
+        ref = data.find(".//x:CipherReference", _ENC_NS)
+        if method is None or ref is None:
+            continue
+        algorithm = method.get("Algorithm") or ""
+        uri = unquote(ref.get("URI") or "").lstrip("/").lower()
+        if algorithm not in _FONT_OBFUSCATION and uri in lowered:
+            raise EpubParseError("This EPUB is DRM-protected and cannot be read")
+
+
+def _toc_titles(
+    zf: zipfile.ZipFile,
+    names: _NameIndex,
+    opf: etree._Element,
+    manifest: dict[str, _Item],
+    opf_dir: str,
+) -> dict[str, str]:
+    """Chapter labels from the EPUB3 nav document or the EPUB2 NCX, keyed by resolved path.
+    Best effort: any problem just means we fall back to the heading inside the file."""
+    titles: dict[str, str] = {}
+
+    def add(href: str, label: str, base: str) -> None:
+        label = " ".join(label.split())
+        if not href or not label:
+            return
+        try:
+            path = _safe_join(base, href)
+        except EpubParseError:
+            return
+        titles.setdefault(path, label)
+
+    try:
+        for item in manifest.values():
+            if "nav" in item.properties.split():
+                raw = _try_read(zf, names, _safe_join(opf_dir, item.href))
+                if raw is None:
+                    continue
+                root = etree.fromstring(raw, parser=_xml_parser())
+                base = posixpath.dirname(_safe_join(opf_dir, item.href))
+                for nav in root.iter("{*}nav"):
+                    kinds = [v for k, v in nav.attrib.items() if k.endswith("type")]
+                    if "toc" not in " ".join(kinds).split():
+                        continue
+                    for a in nav.iter("{*}a"):
+                        add(a.get("href") or "", "".join(a.itertext()), base)
+        if not titles:
+            spine = opf.find(".//opf:spine", _OPF_NS)
+            toc_id = spine.get("toc") if spine is not None else None
+            ncx = manifest.get(toc_id or "")
+            if ncx is not None:
+                raw = _try_read(zf, names, _safe_join(opf_dir, ncx.href))
+                if raw is not None:
+                    root = etree.fromstring(raw, parser=_xml_parser())
+                    base = posixpath.dirname(_safe_join(opf_dir, ncx.href))
+                    for point in root.iter("{*}navPoint"):
+                        text = point.find("n:navLabel/n:text", _NCX_NS)
+                        content = point.find("n:content", _NCX_NS)
+                        if text is not None and content is not None:
+                            add(content.get("src") or "", "".join(text.itertext()), base)
+    except (etree.XMLSyntaxError, EpubParseError, KeyError):
+        return titles
+    return titles
 
 
 _BLOCK_TAGS = frozenset(
@@ -229,11 +360,15 @@ def _collect_blocks(el: etree._Element, out: list[str]) -> None:
 
 def _xhtml_text(raw: bytes) -> tuple[str, str | None]:
     try:
-        root = etree.fromstring(raw)
+        root = etree.fromstring(raw, parser=_xml_parser())
     except etree.XMLSyntaxError:
-        # Some EPUBs ship HTML that isn't well-formed XML; use recover parser.
-        parser = etree.HTMLParser(recover=True)
-        root = etree.fromstring(raw, parser=parser)
+        # Some EPUBs ship HTML that isn't well-formed XML; use the recovering HTML parser.
+        try:
+            root = etree.fromstring(raw, parser=etree.HTMLParser(recover=True, no_network=True))
+        except etree.XMLSyntaxError:
+            return "", None
+        if root is None:
+            return "", None
     heading = None
     for tag in ("h1", "h2", "h3", "title"):
         el = root.find(f".//h:{tag}", _XHTML_NS)

@@ -1,6 +1,6 @@
 # 14. Concept modelling and spoiler visibility
 
-Status: accepted
+Status: accepted; the progress-based visibility rules were removed by [ADR 0017](0017-whole-book-retrieval-and-focus.md)
 
 ## Context
 

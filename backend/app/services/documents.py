@@ -27,7 +27,7 @@ from app.storage.local import new_key
 
 _PDF_MAGIC = b"%PDF-"
 _ZIP_MAGIC = b"PK\x03\x04"  # EPUB is a ZIP; full EPUB validation happens in the worker.
-_MAGIC_BYTES_NEEDED = 5
+_MAGIC_BYTES_NEEDED = 1024  # PDFs may carry junk before "%PDF-" (spec allows 1 KiB)
 
 
 def sanitize_filename(name: str | None) -> str:
@@ -39,7 +39,7 @@ def sanitize_filename(name: str | None) -> str:
 
 def detect_format(filename: str, head: bytes) -> str:
     ext = PurePath(filename).suffix.lower()
-    if ext == ".pdf" and head.startswith(_PDF_MAGIC):
+    if ext == ".pdf" and _PDF_MAGIC in head[:1024]:
         return "pdf"
     if ext == ".epub" and head.startswith(_ZIP_MAGIC):
         return "epub"

@@ -1,4 +1,4 @@
-"""Concept map and trajectories, filtered to the reader's progress."""
+"""Concept map and trajectories for a document."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import AuthContext
 from app.core.errors import NotFoundError
 from app.repositories.concepts import ConceptRepository
-from app.repositories.content import ProgressRepository, SectionRepository
+from app.repositories.content import SectionRepository
 from app.repositories.documents import DocumentRepository
 from app.schemas.concepts import (
     ConceptCellOut,
@@ -26,31 +26,25 @@ class ConceptService:
     def __init__(self, session: AsyncSession, ctx: AuthContext) -> None:
         self.session, self.ctx = session, ctx
 
-    async def _progress(self, document_id: uuid.UUID) -> int:
+    async def _require_document(self, document_id: uuid.UUID) -> None:
         if await DocumentRepository(self.session, self.ctx).get(document_id) is None:
             raise NotFoundError("Document not found")
-        row = await ProgressRepository(self.session, self.ctx).get(document_id)
-        return row.max_ordinal if row else -1  # no progress row ⇒ nothing readable
 
     async def concept_map(self, document_id: uuid.UUID, limit: int) -> ConceptMapOut:
-        progress = await self._progress(document_id)
-        if progress < 0:
-            return ConceptMapOut(progress=None, sections=[], concepts=[])
+        await self._require_document(document_id)
         sections = [
             s
             for s in await SectionRepository(self.session, self.ctx).list_for_document(document_id)
-            if s.first_chunk_ordinal is not None
-            and s.last_chunk_ordinal is not None
-            and s.first_chunk_ordinal <= progress
+            if s.first_chunk_ordinal is not None and s.last_chunk_ordinal is not None
         ]
         size = {
             s.id: (s.last_chunk_ordinal or 0) - (s.first_chunk_ordinal or 0) + 1 for s in sections
         }
         repo = ConceptRepository(self.session, self.ctx)
-        stats = await repo.list_visible(document_id, progress)
+        stats = await repo.list_concepts(document_id)
         stats = sorted(stats, key=lambda st: (-st.chunks, -st.sections, st.concept.name))[:limit]
         by_concept: dict[uuid.UUID, list[ConceptCellOut]] = defaultdict(list)
-        for m in await repo.mentions_visible(document_id, progress):
+        for m in await repo.mentions(document_id):
             if m.section_id in size:
                 by_concept[m.concept_id].append(
                     ConceptCellOut(
@@ -60,14 +54,12 @@ class ConceptService:
                     )
                 )
         return ConceptMapOut(
-            progress=progress,
             sections=[
                 SectionAxisOut(
                     id=s.id,
                     title=s.title,
                     ordinal=s.ordinal,
                     chunks=size[s.id],
-                    fully_read=(s.last_chunk_ordinal or 0) <= progress,
                 )
                 for s in sections
             ],
@@ -84,21 +76,20 @@ class ConceptService:
         )
 
     async def trajectory(self, document_id: uuid.UUID, concept_id: uuid.UUID) -> TrajectoryOut:
-        progress = await self._progress(document_id)
+        await self._require_document(document_id)
         repo = ConceptRepository(self.session, self.ctx)
-        concept = await repo.get_visible(document_id, concept_id, progress)
-        if concept is None:  # unknown, other user's, or not yet reached: all indistinguishable
+        concept = await repo.get(document_id, concept_id)
+        if concept is None:  # unknown or another user's: indistinguishable
             raise NotFoundError("Concept not found")
         titles = {
             s.id: s
             for s in await SectionRepository(self.session, self.ctx).list_for_document(document_id)
         }
         points: list[TrajectoryPointOut] = []
-        for m in await repo.mentions_visible(document_id, progress, concept_id):
+        for m in await repo.mentions(document_id, concept_id):
             sec = titles.get(m.section_id)
             if sec is None:
                 continue
-            finished = m.section_last_ordinal <= progress  # the note summarises the whole section
             points.append(
                 TrajectoryPointOut(
                     section_id=sec.id,
@@ -106,7 +97,7 @@ class ConceptService:
                     section_ordinal=sec.ordinal,
                     first_ordinal=m.first_ordinal,
                     chunks=m.mention_chunks,
-                    note=m.note if finished and m.note else None,
+                    note=m.note or None,
                 )
             )
         points.sort(key=lambda p: p.section_ordinal)

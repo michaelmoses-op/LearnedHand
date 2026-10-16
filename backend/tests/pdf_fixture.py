@@ -56,3 +56,13 @@ def make_image_only_pdf() -> bytes:
     page: Any = doc.new_page()
     page.draw_rect(pymupdf.Rect(100, 100, 300, 300), color=(0, 0, 0), fill=(0.5, 0.5, 0.5))
     return bytes(doc.tobytes())
+
+
+def make_owner_locked_pdf() -> bytes:
+    """Encrypted with an owner password only (restricts printing), no password to open."""
+    doc: Any = pymupdf.open(stream=make_pdf(), filetype="pdf")
+    return bytes(
+        doc.tobytes(
+            encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="owner", user_pw="", permissions=4
+        )
+    )

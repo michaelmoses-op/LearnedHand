@@ -16,6 +16,7 @@ class DocumentOut(StrictModel):
     format: str
     file_size: int
     status: str
+    error: str | None = None  # reason an ingest failed (static text, never book content)
     created_at: datetime
 
 
@@ -29,7 +30,6 @@ class DocumentStatusOut(StrictModel):
     status: str
     ingest_stage: str | None
     error: str | None
-    max_ordinal: int | None
     updated_at: datetime
 
 

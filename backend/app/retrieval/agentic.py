@@ -3,7 +3,7 @@ another retrieval with its follow-up query, up to `max_iterations` passes.
 
 Safety: passages are untrusted data. The follow-up query is used *only* as retrieval query text;
 every pass goes through `RetrievalPipeline`, so it is bounded by the same SQL gate (user,
-document, ordinal <= progress). Iterations are hard-capped, so a hijacked verdict costs at most
+document). Iterations are hard-capped, so a hijacked verdict costs at most
 a couple of extra searches.
 """
 
@@ -81,14 +81,12 @@ async def run_agentic(
     document_id: uuid.UUID,
     query: str,
     config: RetrievalConfig,
-    progress: int | None,
     scope_sections: Sequence[uuid.UUID] | None = None,
 ) -> RetrievalResult:
     first = await pipeline.run(
         document_id=document_id,
         query=query,
         config=config,
-        progress=progress,
         scope_sections=scope_sections,
     )
     if config.max_iterations <= 1 or not first.chunks:
@@ -118,13 +116,10 @@ async def run_agentic(
             document_id=document_id,
             query=follow_up,
             config=config,
-            progress=progress,
             scope_sections=scope_sections,
         )
         stages.extend(_tag(nxt.stages, f"@{iterations}"))
         chunks = _merge(chunks, nxt.chunks, cap)
 
     stages.append(StageTrace("final", 0.0, len(chunks), ids=[c.chunk_id for c in chunks]))
-    return RetrievalResult(
-        chunks=chunks, stages=stages, progress=first.progress, iterations=iterations
-    )
+    return RetrievalResult(chunks=chunks, stages=stages, iterations=iterations)

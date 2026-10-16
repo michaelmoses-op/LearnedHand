@@ -13,46 +13,6 @@
         "title": "Accepted",
         "type": "object"
       },
-      "AnswerIn": {
-        "additionalProperties": false,
-        "properties": {
-          "choice": {
-            "maximum": 9.0,
-            "minimum": 0.0,
-            "title": "Choice",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "choice"
-        ],
-        "title": "AnswerIn",
-        "type": "object"
-      },
-      "AnswerOut": {
-        "additionalProperties": false,
-        "properties": {
-          "answer_index": {
-            "title": "Answer Index",
-            "type": "integer"
-          },
-          "correct": {
-            "title": "Correct",
-            "type": "boolean"
-          },
-          "explanation": {
-            "title": "Explanation",
-            "type": "string"
-          }
-        },
-        "required": [
-          "correct",
-          "answer_index",
-          "explanation"
-        ],
-        "title": "AnswerOut",
-        "type": "object"
-      },
       "AskIn": {
         "additionalProperties": false,
         "properties": {
@@ -85,31 +45,6 @@
         "title": "AskIn",
         "type": "object"
       },
-      "ChunkSpanOut": {
-        "additionalProperties": false,
-        "description": "Where one chunk (the unit progress is tracked in) sits inside its section's text.",
-        "properties": {
-          "char_end": {
-            "title": "Char End",
-            "type": "integer"
-          },
-          "char_start": {
-            "title": "Char Start",
-            "type": "integer"
-          },
-          "ordinal": {
-            "title": "Ordinal",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "ordinal",
-          "char_start",
-          "char_end"
-        ],
-        "title": "ChunkSpanOut",
-        "type": "object"
-      },
       "ConceptCellOut": {
         "additionalProperties": false,
         "properties": {
@@ -137,7 +72,7 @@
       },
       "ConceptMapOut": {
         "additionalProperties": false,
-        "description": "Concept \u00d7 section heat map, limited to what the reader has reached.",
+        "description": "Concept \u00d7 section heat map.",
         "properties": {
           "concepts": {
             "items": {
@@ -145,17 +80,6 @@
             },
             "title": "Concepts",
             "type": "array"
-          },
-          "progress": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Progress"
           },
           "sections": {
             "items": {
@@ -166,7 +90,6 @@
           }
         },
         "required": [
-          "progress",
           "sections",
           "concepts"
         ],
@@ -241,6 +164,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
           },
           "file_size": {
             "title": "File Size",
@@ -338,17 +272,6 @@
             ],
             "title": "Ingest Stage"
           },
-          "max_ordinal": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Ordinal"
-          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -364,7 +287,6 @@
           "status",
           "ingest_stage",
           "error",
-          "max_ordinal",
           "updated_at"
         ],
         "title": "DocumentStatusOut",
@@ -384,134 +306,6 @@
           "email"
         ],
         "title": "EmailRequest",
-        "type": "object"
-      },
-      "FlashcardListOut": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/FlashcardOut"
-            },
-            "title": "Items",
-            "type": "array"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "FlashcardListOut",
-        "type": "object"
-      },
-      "FlashcardOut": {
-        "additionalProperties": false,
-        "properties": {
-          "back": {
-            "title": "Back",
-            "type": "string"
-          },
-          "due_at": {
-            "format": "date-time",
-            "title": "Due At",
-            "type": "string"
-          },
-          "front": {
-            "title": "Front",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "interval_days": {
-            "title": "Interval Days",
-            "type": "integer"
-          },
-          "reps": {
-            "title": "Reps",
-            "type": "integer"
-          },
-          "source_ordinal": {
-            "title": "Source Ordinal",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "front",
-          "back",
-          "source_ordinal",
-          "due_at",
-          "reps",
-          "interval_days"
-        ],
-        "title": "FlashcardOut",
-        "type": "object"
-      },
-      "GenerateIn": {
-        "additionalProperties": false,
-        "properties": {
-          "count": {
-            "default": 5,
-            "maximum": 10.0,
-            "minimum": 1.0,
-            "title": "Count",
-            "type": "integer"
-          },
-          "kind": {
-            "enum": [
-              "flashcards",
-              "quiz"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "section_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Section Id"
-          }
-        },
-        "required": [
-          "kind"
-        ],
-        "title": "GenerateIn",
-        "type": "object"
-      },
-      "GenerateOut": {
-        "additionalProperties": false,
-        "properties": {
-          "created": {
-            "title": "Created",
-            "type": "integer"
-          },
-          "kind": {
-            "enum": [
-              "flashcards",
-              "quiz"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "skipped": {
-            "title": "Skipped",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "kind",
-          "created",
-          "skipped"
-        ],
-        "title": "GenerateOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -617,8 +411,15 @@
         "additionalProperties": false,
         "properties": {
           "anchor_ordinal": {
-            "title": "Anchor Ordinal",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Ordinal"
           },
           "body": {
             "title": "Body",
@@ -709,41 +510,6 @@
         "title": "PasswordResetConfirm",
         "type": "object"
       },
-      "ProgressIn": {
-        "additionalProperties": false,
-        "properties": {
-          "max_ordinal": {
-            "minimum": 0.0,
-            "title": "Max Ordinal",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "max_ordinal"
-        ],
-        "title": "ProgressIn",
-        "type": "object"
-      },
-      "ProgressOut": {
-        "additionalProperties": false,
-        "properties": {
-          "document_id": {
-            "format": "uuid",
-            "title": "Document Id",
-            "type": "string"
-          },
-          "max_ordinal": {
-            "title": "Max Ordinal",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "document_id",
-          "max_ordinal"
-        ],
-        "title": "ProgressOut",
-        "type": "object"
-      },
       "QualityReportOut": {
         "additionalProperties": false,
         "properties": {
@@ -770,61 +536,6 @@
           "report"
         ],
         "title": "QualityReportOut",
-        "type": "object"
-      },
-      "QuizListOut": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/QuizQuestionOut"
-            },
-            "title": "Items",
-            "type": "array"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "QuizListOut",
-        "type": "object"
-      },
-      "QuizQuestionOut": {
-        "additionalProperties": false,
-        "properties": {
-          "choices": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Choices",
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "question": {
-            "title": "Question",
-            "type": "string"
-          },
-          "source_ordinal": {
-            "title": "Source Ordinal",
-            "type": "integer"
-          },
-          "times_answered": {
-            "title": "Times Answered",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "question",
-          "choices",
-          "source_ordinal",
-          "times_answered"
-        ],
-        "title": "QuizQuestionOut",
         "type": "object"
       },
       "ReingestIn": {
@@ -855,36 +566,12 @@
         "title": "ReingestIn",
         "type": "object"
       },
-      "ReviewIn": {
-        "additionalProperties": false,
-        "properties": {
-          "rating": {
-            "enum": [
-              "again",
-              "hard",
-              "good",
-              "easy"
-            ],
-            "title": "Rating",
-            "type": "string"
-          }
-        },
-        "required": [
-          "rating"
-        ],
-        "title": "ReviewIn",
-        "type": "object"
-      },
       "SectionAxisOut": {
         "additionalProperties": false,
         "properties": {
           "chunks": {
             "title": "Chunks",
             "type": "integer"
-          },
-          "fully_read": {
-            "title": "Fully Read",
-            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -904,8 +591,7 @@
           "id",
           "title",
           "ordinal",
-          "chunks",
-          "fully_read"
+          "chunks"
         ],
         "title": "SectionAxisOut",
         "type": "object"
@@ -941,13 +627,6 @@
             ],
             "title": "Body"
           },
-          "chunks": {
-            "items": {
-              "$ref": "#/components/schemas/ChunkSpanOut"
-            },
-            "title": "Chunks",
-            "type": "array"
-          },
           "depth": {
             "title": "Depth",
             "type": "integer"
@@ -956,17 +635,6 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
-          },
-          "last_chunk_ordinal": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Chunk Ordinal"
           },
           "ordinal": {
             "title": "Ordinal",
@@ -984,10 +652,6 @@
             ],
             "title": "Parent Id"
           },
-          "readable": {
-            "title": "Readable",
-            "type": "boolean"
-          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -999,12 +663,44 @@
           "ordinal",
           "depth",
           "title",
-          "body",
-          "readable",
-          "last_chunk_ordinal",
-          "chunks"
+          "body"
         ],
         "title": "SectionOut",
+        "type": "object"
+      },
+      "SectionSummaryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "title",
+          "ordinal",
+          "depth",
+          "body"
+        ],
+        "title": "SectionSummaryOut",
         "type": "object"
       },
       "Status": {
@@ -1018,6 +714,36 @@
           "status"
         ],
         "title": "Status",
+        "type": "object"
+      },
+      "SummariesOut": {
+        "additionalProperties": false,
+        "description": "The book-level summary (null until ingestion has produced it) and one per section.",
+        "properties": {
+          "book": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionSummaryOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "book",
+          "sections"
+        ],
+        "title": "SummariesOut",
         "type": "object"
       },
       "TokenRequest": {
@@ -1792,137 +1518,9 @@
         ]
       }
     },
-    "/api/v1/documents/{document_id}/flashcards": {
-      "get": {
-        "operationId": "list_flashcards_api_v1_documents__document_id__flashcards_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Document Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "due",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Due",
-              "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 200,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardListOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Flashcards",
-        "tags": [
-          "study"
-        ]
-      }
-    },
-    "/api/v1/documents/{document_id}/flashcards/{card_id}/review": {
-      "post": {
-        "operationId": "review_flashcard_api_v1_documents__document_id__flashcards__card_id__review_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Document Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "card_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Card Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReviewIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlashcardOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Review Flashcard",
-        "tags": [
-          "study"
-        ]
-      }
-    },
     "/api/v1/documents/{document_id}/notes": {
       "get": {
-        "description": "Notes and highlights up to your reading progress; `q` is a full-text search.",
+        "description": "Notes and highlights for this book; `q` is a full-text search.",
         "operationId": "list_notes_api_v1_documents__document_id__notes_get",
         "parameters": [
           {
@@ -2006,7 +1604,7 @@
         },
         "summary": "List Notes",
         "tags": [
-          "study"
+          "notes"
         ]
       },
       "post": {
@@ -2057,7 +1655,7 @@
         },
         "summary": "Create Note",
         "tags": [
-          "study"
+          "notes"
         ]
       }
     },
@@ -2103,7 +1701,7 @@
         },
         "summary": "Delete Note",
         "tags": [
-          "study"
+          "notes"
         ]
       },
       "patch": {
@@ -2164,60 +1762,7 @@
         },
         "summary": "Update Note",
         "tags": [
-          "study"
-        ]
-      }
-    },
-    "/api/v1/documents/{document_id}/progress": {
-      "put": {
-        "operationId": "put_progress_api_v1_documents__document_id__progress_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Document Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProgressIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProgressOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Progress",
-        "tags": [
-          "documents"
+          "notes"
         ]
       }
     },
@@ -2264,127 +1809,9 @@
         ]
       }
     },
-    "/api/v1/documents/{document_id}/quiz": {
-      "get": {
-        "operationId": "list_quiz_api_v1_documents__document_id__quiz_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Document Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 10,
-              "maximum": 50,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QuizListOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Quiz",
-        "tags": [
-          "study"
-        ]
-      }
-    },
-    "/api/v1/documents/{document_id}/quiz/{question_id}/answer": {
-      "post": {
-        "operationId": "answer_quiz_api_v1_documents__document_id__quiz__question_id__answer_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Document Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "question_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Question Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnswerIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnswerOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Answer Quiz",
-        "tags": [
-          "study"
-        ]
-      }
-    },
     "/api/v1/documents/{document_id}/reingest": {
       "post": {
-        "description": "Re-run ingestion from a stage (default: first stale stage). Keeps reading progress.",
+        "description": "Re-run ingestion from a stage (default: first stale stage).",
         "operationId": "reingest_document_api_v1_documents__document_id__reingest_post",
         "parameters": [
           {
@@ -2522,10 +1949,10 @@
         ]
       }
     },
-    "/api/v1/documents/{document_id}/study/generate": {
-      "post": {
-        "description": "Flashcards or quiz questions from what you have already read (most recent passages).",
-        "operationId": "generate_study_material_api_v1_documents__document_id__study_generate_post",
+    "/api/v1/documents/{document_id}/summaries": {
+      "get": {
+        "description": "Book-level and per-section summaries generated at ingestion.",
+        "operationId": "list_summaries_api_v1_documents__document_id__summaries_get",
         "parameters": [
           {
             "in": "path",
@@ -2538,22 +1965,12 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateIn"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GenerateOut"
+                  "$ref": "#/components/schemas/SummariesOut"
                 }
               }
             },
@@ -2570,9 +1987,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Generate Study Material",
+        "summary": "List Summaries",
         "tags": [
-          "study"
+          "documents"
         ]
       }
     },

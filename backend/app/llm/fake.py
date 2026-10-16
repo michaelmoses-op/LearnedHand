@@ -104,10 +104,6 @@ def _special_structured(
     user = next((m.content for m in reversed(messages) if m.role == "user"), "")
     if "concepts" in props:
         return {"concepts": _fake_concepts(user)}
-    if "cards" in props:
-        return {"cards": _fake_cards(user)}
-    if "questions" in props:
-        return {"questions": _fake_quiz(user)}
     if "label" in props:
         return _fake_classification(user)
     if "sufficient" in props:
@@ -182,57 +178,6 @@ def _fake_concepts(user: str) -> list[dict[str, str]]:
                 counts[tok] = counts.get(tok, 0) + 1
     top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
     return [{"name": w, "note": f"This section discusses {w}."} for w, _ in top]
-
-
-_ORD_PASSAGE = re.compile(r'<passage ordinal="(\d+)">\n?(.*?)\n?</passage>', re.DOTALL)
-_UP_TO = re.compile(r"up to (\d+)")
-_DISTRACTORS = ("quasar", "zephyr", "mandolin", "obelisk")
-
-
-def _study_items(user: str) -> list[tuple[int, str, str]]:
-    """(ordinal, top word, opening sentence) per passage, in the order given."""
-    m = _UP_TO.search(user)
-    limit = int(m.group(1)) if m else 5
-    out: list[tuple[int, str, str]] = []
-    for ordinal, body in _ORD_PASSAGE.findall(user):
-        counts: dict[str, int] = {}
-        for tok in _WORD.findall(body.lower()):
-            if len(tok) >= 6 and tok not in _STOPWORDS:
-                counts[tok] = counts.get(tok, 0) + 1
-        if not counts:
-            continue
-        word = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
-        out.append((int(ordinal), word, body.strip().split(".")[0][:200]))
-    return out[:limit]
-
-
-def _fake_cards(user: str) -> list[dict[str, Any]]:
-    return [
-        {
-            "front": f"What does the text say about {word}?",
-            "back": f"{sentence}.",
-            "source_ordinal": ordinal,
-        }
-        for ordinal, word, sentence in _study_items(user)
-    ]
-
-
-def _fake_quiz(user: str) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for ordinal, word, sentence in _study_items(user):
-        choices = list(_DISTRACTORS[:3])
-        idx = ordinal % 4
-        choices.insert(idx, word)
-        out.append(
-            {
-                "question": f"Which word is central to this passage: \u201c{sentence[:80]}\u201d?",
-                "choices": choices,
-                "answer_index": idx,
-                "explanation": f"The passage is about {word}.",
-                "source_ordinal": ordinal,
-            }
-        )
-    return out
 
 
 def _extractive_summary(messages: Sequence[ChatMessage]) -> str | None:

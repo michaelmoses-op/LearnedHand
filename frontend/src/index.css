@@ -300,54 +300,6 @@
   .book-text p.dropcap {
     text-indent: 0;
   }
-  .book-text p {
-    border-radius: 3px;
-    cursor: pointer;
-    transition: background-color 120ms;
-  }
-  .book-text p:hover {
-    background: rgb(176 138 60 / 0.1);
-  }
-  .book-text p[data-active="true"] {
-    background: rgb(176 138 60 / 0.2);
-  }
-  /* Paragraphs you have fully read carry a faint oxblood margin rule. */
-  .book-text p[data-read="true"] {
-    box-shadow: -0.8rem 0 0 -0.6rem rgb(123 45 38 / 0.55);
-  }
-  .book-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0.5rem 0 0.25rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-rule);
-    border-radius: 3px;
-    background: var(--color-parchment);
-    font-size: 0.85rem;
-    text-align: left;
-    text-indent: 0;
-  }
-  .bookmark-line {
-    position: relative;
-    margin: 1rem 0;
-    height: 0;
-    border-top: 2px dashed var(--color-burgundy);
-    text-indent: 0;
-  }
-  .bookmark-line span {
-    position: absolute;
-    top: -0.85rem;
-    right: 0;
-    padding: 0 0.6rem;
-    background: var(--color-vellum);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-burgundy);
-  }
 
   .prose-book {
     line-height: 1.75;

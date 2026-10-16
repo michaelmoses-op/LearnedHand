@@ -38,16 +38,3 @@ class SummaryRepository:
             .order_by(Summary.first_ordinal, Summary.depth)
         )
         return list((await self.session.execute(stmt)).scalars())
-
-    async def list_visible(self, document_id: uuid.UUID, progress: int) -> list[Summary]:
-        """Only summaries the reader has fully passed: last_ordinal <= progress."""
-        stmt = (
-            select(Summary)
-            .where(
-                Summary.user_id == self.ctx.user_id,
-                Summary.document_id == document_id,
-                Summary.last_ordinal <= progress,
-            )
-            .order_by(Summary.first_ordinal, Summary.depth)
-        )
-        return list((await self.session.execute(stmt)).scalars())

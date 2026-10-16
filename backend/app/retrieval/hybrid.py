@@ -31,7 +31,7 @@ __all__ = [
 
 
 class HybridRetriever:
-    """Flat hybrid search. Callers supply AuthContext; progress is required (or resolved)."""
+    """Flat hybrid search. Callers supply AuthContext."""
 
     def __init__(
         self,
@@ -45,22 +45,16 @@ class HybridRetriever:
             session, ctx, settings, document_id=document_id, reranker=None
         )
 
-    async def resolve_progress(self, document_id: uuid.UUID) -> int:
-        return await self._pipeline.resolve_progress(document_id)
-
     async def retrieve(
         self,
         *,
         document_id: uuid.UUID,
         query: str,
-        progress: int | None = None,
         limit: int = DEFAULT_LIMIT,
         candidate_k: int = DEFAULT_CANDIDATE_K,
     ) -> list[RetrievedChunk]:
         if limit < 1 or candidate_k < 1:
             raise RetrievalError("bad_limit")
         config = RetrievalConfig(name="hybrid", final_k=limit, candidate_k=candidate_k)
-        result = await self._pipeline.run(
-            document_id=document_id, query=query, config=config, progress=progress
-        )
+        result = await self._pipeline.run(document_id=document_id, query=query, config=config)
         return result.chunks

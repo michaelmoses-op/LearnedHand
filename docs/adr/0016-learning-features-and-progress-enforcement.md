@@ -1,6 +1,6 @@
 # 16. Learning features and end-to-end progress enforcement
 
-Status: accepted
+Status: superseded by [ADR 0017](0017-whole-book-retrieval-and-focus.md) (flashcards, quizzes and progress enforcement removed; notes and tutor mode remain)
 
 ## Context
 

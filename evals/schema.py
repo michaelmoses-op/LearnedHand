@@ -11,15 +11,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.retrieval.config import RetrievalConfig
 
 
-class Progress(BaseModel):
-    """Where the reader is when asking. Default: finished the book."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    after_section: int | None = Field(default=None, ge=1)  # 1-based: finished this many sections
-    ordinal: int | None = Field(default=None, ge=0)  # or an explicit chunk ordinal
-
-
 class Question(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -29,9 +20,10 @@ class Question(BaseModel):
     expected_chunks: list[str] = Field(default_factory=list)
     # Key facts an answer must contain (judge input; also checked against retrieved context).
     expected_points: list[str] = Field(default_factory=list)
-    # Text that must NOT appear in anything retrieved (spoiler check, independent of the gate).
-    forbidden_snippets: list[str] = Field(default_factory=list)
-    progress: Progress = Field(default_factory=Progress)
+    # Legacy keys from the removed reading-position feature; accepted and ignored so existing
+    # question files keep loading.
+    forbidden_snippets: list[str] = Field(default_factory=list, exclude=True)
+    progress: dict[str, int] | None = Field(default=None, exclude=True)
     tags: list[str] = Field(default_factory=list)
 
 

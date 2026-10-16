@@ -36,7 +36,11 @@ CHUNK_TOKEN_TARGET = 400
 CHUNK_TOKEN_MAX = 500
 
 # EPUB safety limits (worker-only parsing).
-EPUB_MAX_FILES = 2_000
-EPUB_MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
-EPUB_MAX_FILE_BYTES = 8 * 1024 * 1024
+# Generous enough for large illustrated scholarly editions and single-file anthologies, but still
+# bounded so a zip bomb cannot exhaust the worker.
+EPUB_MAX_FILES = 10_000
+EPUB_MAX_UNCOMPRESSED_BYTES = 600 * 1024 * 1024
+EPUB_MAX_FILE_BYTES = 48 * 1024 * 1024
 EPUB_MAX_COMPRESSION_RATIO = 100
+# The ratio is only meaningful for big entries (tiny padded/blank pages compress absurdly well).
+EPUB_RATIO_MIN_BYTES = 2 * 1024 * 1024

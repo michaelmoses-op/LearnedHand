@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useDeleteDocument, useDocuments, useUpload } from "./documents";
+import { ingestErrorMessage } from "./ingestError";
 
 const STATUS_DOT: Record<string, string> = {
   ready: "bg-laurel",
@@ -66,7 +67,9 @@ export function Library() {
       {docs.isSuccess && items.length === 0 && (
         <div className="panel p-10 text-center">
           <p className="text-lg">Your library is empty. Upload a book you own to get started.</p>
-          <p className="muted mt-2 text-sm">EPUB and text-based PDF files are supported.</p>
+          <p className="muted mt-2 text-sm">
+            Any DRM-free EPUB or PDF with selectable text is supported.
+          </p>
         </div>
       )}
 
@@ -92,6 +95,11 @@ export function Library() {
                   {d.status}
                 </span>
               </p>
+              {d.status === "failed" && (
+                <p role="alert" className="alert mt-2 text-sm">
+                  {ingestErrorMessage(d.error)}
+                </p>
+              )}
             </div>
             <div className="flex shrink-0 gap-2">
               <Link

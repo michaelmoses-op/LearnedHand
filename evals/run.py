@@ -37,9 +37,8 @@ from app.llm.rerank import build_reranker
 from app.models.chunk import Chunk
 from app.models.eval import EvalResult, EvalRun
 from app.models.job import Job
-from app.models.section import Section
 from app.models.user import User
-from app.repositories.content import ChunkRepository, SectionRepository
+from app.repositories.content import ChunkRepository
 from app.repositories.users import UserRepository
 from app.retrieval.orchestrator import RetrievalOrchestrator
 from app.retrieval.types import RetrievalResult
@@ -132,24 +131,9 @@ async def _chunks_current(
     )
 
 
-def _resolve_progress(q: Question, sections: Sequence[Section], last_ordinal: int) -> int:
-    if q.progress.ordinal is not None:
-        return min(q.progress.ordinal, last_ordinal)
-    if q.progress.after_section is not None:
-        idx = min(q.progress.after_section, len(sections)) - 1
-        while idx >= 0 and sections[idx].last_chunk_ordinal is None:
-            idx -= 1
-        return sections[idx].last_chunk_ordinal or 0 if idx >= 0 else -1
-    return last_ordinal
-
-
-def _gold(q: Question, chunks: Sequence[Chunk], progress: int) -> set[uuid.UUID]:
+def _gold(q: Question, chunks: Sequence[Chunk]) -> set[uuid.UUID]:
     snippets = [s.lower() for s in q.expected_chunks]
-    return {
-        c.id
-        for c in chunks
-        if c.ordinal <= progress and any(sn in c.body.lower() for sn in snippets)
-    }
+    return {c.id for c in chunks if any(sn in c.body.lower() for sn in snippets)}
 
 
 async def evaluate_config(
@@ -168,9 +152,7 @@ async def evaluate_config(
     stored: list[tuple[str, dict[str, Any], list[dict[str, Any]]]] = []
     async with scope(sm, user_id) as s:
         chunks = await ChunkRepository(s, ctx).list_for_document(doc_id)
-        sections = await SectionRepository(s, ctx).list_for_document(doc_id)
         by_id = {c.id: c for c in chunks}
-        last_ordinal = max(c.ordinal for c in chunks)
         reranker = build_reranker(settings.model_copy(update={"reranker": cfg.reranker}))
         orchestrator = RetrievalOrchestrator(
             s, ctx, settings, document_id=doc_id, reranker=reranker
@@ -179,16 +161,13 @@ async def evaluate_config(
         judge_llm = build_llm(settings, s, ctx, document_id=doc_id, stage="judge")
 
         for q in qfile.questions:
-            progress = _resolve_progress(q, sections, last_ordinal)
-            gold = _gold(q, chunks, progress)
+            gold = _gold(q, chunks)
             if q.expected_chunks and not gold:
-                print(f"  ! {q.id}: no gold passage found within progress — skipped", flush=True)
+                print(f"  ! {q.id}: no gold passage found in the book — skipped", flush=True)
                 continue
-            result = await orchestrator.run(
-                query=q.question, config=cfg.retrieval, progress=progress, route=cfg.route
-            )
+            result = await orchestrator.run(query=q.question, config=cfg.retrieval, route=cfg.route)
             row, stages = await _score(
-                q, result, gold, by_id, progress, cfg, settings, gen_llm, judge_llm, judge_model
+                q, result, gold, by_id, cfg, settings, gen_llm, judge_llm, judge_model
             )
             rows.append(row)
             stored.append((q.id, row, stages))
@@ -220,7 +199,6 @@ async def _score(
     result: RetrievalResult,
     gold: set[uuid.UUID],
     by_id: dict[uuid.UUID, Chunk],
-    progress: int,
     cfg: EvalConfig,
     settings: Settings,
     gen_llm: Any,
@@ -235,8 +213,6 @@ async def _score(
         "recall_at_10": metrics.recall_at_k(gold, final_ids, 10),
         "mrr": metrics.reciprocal_rank(gold, final_ids),
         "context_point_coverage": metrics.point_coverage(q.expected_points, " ".join(texts)),
-        "spoiler_leaks": metrics.contains_any(texts, q.forbidden_snippets)
-        + sum(1 for c in result.chunks if c.ordinal > progress),
         "retrieval_ms": result.total_ms,
         "iterations": result.iterations,
     }
@@ -344,7 +320,7 @@ async def main_async(args: argparse.Namespace) -> int:
                 )
                 ran += 1
                 r5 = summary.get("recall_at_5")
-                print(f"  {cfg.name:<28} recall@5={_fmt(r5)} leaks={summary.get('spoiler_leaks')}")
+                print(f"  {cfg.name:<28} recall@5={_fmt(r5)}")
         if not ran:
             return 2
         from evals.compare import render_batch

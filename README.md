@@ -1,7 +1,7 @@
 # LearnedHand
 
 Humanities reading companion (RAG): upload a book you own, then ask questions as if talking to a professor.
-Structure-aware, spoiler-safe, cited. See `AGENTS.md` for the working agreement and phase plan.
+Structure-aware, cited, whole-book. See `AGENTS.md` for the working agreement and phase plan.
 
 ## Quick start (native, no Docker)
 

@@ -5,10 +5,9 @@ import { api, problemMessage } from "../api/client";
 import { askDocument, type AskCitation, type AskSource } from "./ask";
 import { ConceptMap } from "./ConceptMap";
 import { Notes } from "./Notes";
-import { useProgress, useSaveProgress } from "./progress";
-import { ReadingPosition } from "./ReadingPosition";
-import { SectionText, type ChunkSpan } from "./SectionText";
-import { Study } from "./Study";
+import { BookText } from "./BookText";
+import { ingestErrorMessage } from "./ingestError";
+import { Summary } from "./Summary";
 
 type Section = {
   id: string;
@@ -17,16 +16,13 @@ type Section = {
   depth: number;
   title: string;
   body: string | null;
-  readable: boolean;
-  last_chunk_ordinal: number | null;
-  chunks: ChunkSpan[];
 };
 
 const TABS = [
   { id: "read", label: "Read & Ask", needsReady: false },
+  { id: "summary", label: "Summary", needsReady: true },
   { id: "concepts", label: "Concepts", needsReady: true },
   { id: "notes", label: "Notes", needsReady: true },
-  { id: "study", label: "Study", needsReady: true },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -43,8 +39,6 @@ export function Reader({ documentId }: { documentId: string }) {
   const [focusSection, setFocusSection] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("read");
   const tabsId = useId();
-  const progress = useProgress(documentId);
-  const saveProgress = useSaveProgress(documentId);
 
   const doc = useQuery({
     queryKey: ["document", documentId],
@@ -128,17 +122,6 @@ export function Reader({ documentId }: { documentId: string }) {
     );
 
   const ready = doc.data.status === "ready";
-  // The furthest section the reader has finished: where their bookmark sits.
-  const gateNow = progress.data?.max_ordinal ?? -1;
-  const hereId =
-    (sections.data ?? []).find((s) => s.chunks.some((c) => c.ordinal === gateNow))?.id ??
-    (sections.data ?? [])
-      .filter((s) => s.last_chunk_ordinal !== null && s.last_chunk_ordinal <= gateNow)
-      .sort(
-        (x, y) =>
-          (y.last_chunk_ordinal ?? 0) - (x.last_chunk_ordinal ?? 0) || y.ordinal - x.ordinal,
-      )[0]?.id;
-
   return (
     <article>
       <p className="mb-4">
@@ -152,10 +135,10 @@ export function Reader({ documentId }: { documentId: string }) {
           {doc.data.format.toUpperCase()} · {doc.data.status}
         </p>
         <h2 className="mt-1 text-3xl font-semibold">{doc.data.title}</h2>
-        {ready && sections.data && (
-          <div className="mt-4">
-            <ReadingPosition documentId={documentId} sections={sections.data} />
-          </div>
+        {doc.data.status === "failed" && (
+          <p role="alert" className="alert mt-3">
+            {ingestErrorMessage(doc.data.error)}
+          </p>
         )}
       </header>
 
@@ -193,7 +176,7 @@ export function Reader({ documentId }: { documentId: string }) {
           <>
             <form className="space-y-3" onSubmit={onAsk}>
               <label htmlFor={qId} className="label">
-                Ask a question about what you have read
+                Ask a question about this book
               </label>
               <textarea
                 id={qId}
@@ -267,10 +250,6 @@ export function Reader({ documentId }: { documentId: string }) {
                 <h3 id="sections-heading" className="text-2xl font-semibold">
                   Contents
                 </h3>
-                <p className="muted text-sm">
-                  Tip: click a paragraph (or double-click it) to mark how far you have read, or use{" "}
-                  <em>Finished here</em> for a whole section.
-                </p>
               </div>
               {sections.isPending && <p role="status">Loading sections…</p>}
               {sections.isError && (
@@ -278,90 +257,32 @@ export function Reader({ documentId }: { documentId: string }) {
                   {sections.error.message}
                 </p>
               )}
-              {saveProgress.isError && (
-                <p role="alert" className="alert mt-3">
-                  {saveProgress.error.message}
-                </p>
-              )}
               <ol className="mt-4 space-y-4">
-                {(sections.data ?? []).map((s) => {
-                  const last = s.last_chunk_ordinal;
-                  const gate = progress.data?.max_ordinal ?? -1;
-                  const finished = last !== null && last <= gate;
-                  const here = s.id === hereId;
-                  const atEnd = here && finished;
-                  const mark = () => {
-                    if (last !== null && !saveProgress.isPending) saveProgress.mutate(last);
-                  };
-                  return (
-                    <li
-                      key={s.id}
-                      id={`section-${s.id}`}
-                      className={`rounded-sm border p-4 ${
-                        here
-                          ? "border-gold bg-gold/10 shadow-[inset_4px_0_0_var(--color-burgundy)]"
-                          : "border-transparent"
-                      } ${focusSection === s.id ? "ring-2 ring-gold" : ""}`}
-                      style={{ marginLeft: `${s.depth * 0.75}rem` }}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h4 className="text-lg font-semibold">{s.title}</h4>
-                        {last !== null && (
-                          <div className="flex items-center gap-2">
-                            {here && (
-                              <span className="rounded-sm bg-burgundy px-2 py-0.5 text-xs font-bold tracking-wide text-vellum uppercase">
-                                You are here
-                              </span>
-                            )}
-                            {finished && !here && (
-                              <span className="muted text-sm" title="You have read this section">
-                                Read ✓
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              aria-label={`${atEnd ? "Bookmarked" : "Finished here"}, ${s.title}`}
-                              disabled={saveProgress.isPending || atEnd}
-                              onClick={mark}
-                            >
-                              {atEnd ? "Bookmarked" : "Finished here"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {s.readable && s.body ? (
-                        <SectionText
-                          title={s.title}
-                          body={s.body}
-                          chunks={s.chunks}
-                          progress={gate}
-                          showBookmark={here}
-                          disabled={saveProgress.isPending}
-                          onMark={(ordinal) => saveProgress.mutate(ordinal)}
-                        />
-                      ) : (
-                        <div
-                          title={last !== null ? "Double-click to mark as finished" : undefined}
-                          onDoubleClick={() => {
-                            window.getSelection()?.removeAllRanges();
-                            mark();
-                          }}
-                        >
-                          <p className="muted mt-2 text-sm italic">Past your reading progress.</p>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
+                {(sections.data ?? []).map((s) => (
+                  <li
+                    key={s.id}
+                    id={`section-${s.id}`}
+                    className={`rounded-sm border p-4 ${
+                      focusSection === s.id ? "border-gold ring-2 ring-gold" : "border-transparent"
+                    }`}
+                    style={{ marginLeft: `${s.depth * 0.75}rem` }}
+                  >
+                    <h4 className="text-lg font-semibold">{s.title}</h4>
+                    {s.body ? (
+                      <BookText title={s.title} body={s.body} />
+                    ) : (
+                      <p className="muted mt-2 text-sm italic">No text in this section.</p>
+                    )}
+                  </li>
+                ))}
               </ol>
             </section>
           </>
         )}
 
+        {tab === "summary" && <Summary documentId={documentId} onAsk={() => setTab("read")} />}
         {tab === "concepts" && <ConceptMap documentId={documentId} />}
         {tab === "notes" && <Notes documentId={documentId} />}
-        {tab === "study" && <Study documentId={documentId} />}
       </div>
     </article>
   );

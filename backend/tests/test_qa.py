@@ -124,7 +124,9 @@ async def test_ask_idor_is_404(client: AsyncClient, client_b: AsyncClient) -> No
 
 
 @pytest.mark.usefixtures("user_a")
-async def test_sections_and_progress(app: FastAPI, client: AsyncClient) -> None:
+async def test_sections_return_full_text_in_reading_order(
+    app: FastAPI, client: AsyncClient
+) -> None:
     epub = make_epub()
     doc_id = (
         await client.post("/api/v1/documents", content=epub, headers={"X-Filename": "s.epub"})
@@ -132,34 +134,6 @@ async def test_sections_and_progress(app: FastAPI, client: AsyncClient) -> None:
     assert await process_one(app.state.sessionmaker, "sec-w")
 
     sections = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
-    assert sections
-    assert all(s["readable"] and s["body"] for s in sections)
-
-    # Clamp progress to the first chunk only; later sections should gate.
-    r = await client.put(f"/api/v1/documents/{doc_id}/progress", json={"max_ordinal": 0})
-    assert r.status_code == 200 and r.json()["max_ordinal"] == 0
-    gated = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
-    assert any(s["readable"] for s in gated)
-    if len(gated) > 1:
-        assert any(not s["readable"] for s in gated) or all(s["readable"] for s in gated)
-
-
-@pytest.mark.usefixtures("user_a")
-async def test_sections_expose_chunk_offsets_only_for_readable_sections(
-    app: FastAPI, client: AsyncClient
-) -> None:
-    from tests.test_hierarchical import _ingest
-
-    doc_id = await _ingest(app, client)
-    items = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
-    assert all(s["chunks"] for s in items)  # default progress = end of book
-    for s in items:
-        ordinals = [c["ordinal"] for c in s["chunks"]]
-        assert ordinals == sorted(ordinals) and ordinals[-1] == s["last_chunk_ordinal"]
-        assert all(c["char_end"] > c["char_start"] >= 0 for c in s["chunks"])
-        assert all(set(c) == {"ordinal", "char_start", "char_end"} for c in s["chunks"])  # no text
-
-    await client.put(f"/api/v1/documents/{doc_id}/progress", json={"max_ordinal": 0})
-    items = (await client.get(f"/api/v1/documents/{doc_id}/sections")).json()["items"]
-    assert items[0]["chunks"] and items[0]["body"]
-    assert all(not s["chunks"] and s["body"] is None for s in items[1:])
+    assert sections and all(s["body"] for s in sections)
+    assert [s["ordinal"] for s in sections] == sorted(s["ordinal"] for s in sections)
+    assert all(set(s) == {"id", "parent_id", "ordinal", "depth", "title", "body"} for s in sections)

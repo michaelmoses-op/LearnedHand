@@ -84,7 +84,7 @@ def summarise(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {"questions": len(rows)}
     for key in sorted(keys):
         vals = [r.get(key) for r in rows]
-        if key in ("spoiler_leaks", "input_tokens", "output_tokens", "cost_usd"):
+        if key in ("input_tokens", "output_tokens", "cost_usd"):
             out[key] = sum(v or 0 for v in vals)
         elif key.endswith("_ms"):
             nums = [v for v in vals if v is not None]

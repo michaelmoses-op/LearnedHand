@@ -57,30 +57,40 @@ re-ingested after switching (`POST /api/v1/documents/{id}/reingest`).
 ## Re-ingesting and the parsing quality report
 
 `POST /api/v1/documents/{id}/reingest` re-runs ingestion from a stage (`{"from_stage": "summaries"}`)
-or, with an empty body, from the first stage whose recorded version is stale. Reading progress is
-kept. `GET /api/v1/documents/{id}/quality` returns the parse quality report (score, warnings,
-counts). PDFs are extracted in a memory/CPU-limited child process; scanned (image-only) PDFs are
-rejected because OCR is not supported.
+or, with an empty body, from the first stage whose recorded version is stale. `GET /api/v1/documents/{id}/quality` returns the parse quality report (score, warnings,
+counts. PDFs are extracted in a memory/CPU-limited child process.
+
+### What can be uploaded
+
+Any DRM-free `.epub` or `.pdf` up to `MAX_UPLOAD_BYTES` (default 250 MB). Real-world quirks are
+handled: percent-encoded or differently-cased EPUB paths, spine entries that are missing from the
+archive (skipped), chapter titles taken from the EPUB nav/NCX table of contents, PDFs with junk
+before the header, and PDFs locked only with an owner password. Some files cannot be read, and
+the library says why next to the book:
+
+- **DRM-protected EPUBs** (Adobe/Kindle-style encryption) cannot be read; use a DRM-free copy.
+- **PDFs that need a password to open** are refused.
+- **Scanned PDFs with no text layer** are refused because OCR is not performed; run them through
+  OCR first (e.g. `ocrmypdf scan.pdf scan-ocr.pdf`) and upload the result.
+- PDFs are limited to 5,000 pages / 10 minutes / 2 GB of memory in the extraction process.
 
 ## Concepts, routing and the agentic loop (Phase 4)
 
 Run `make migrate` (adds migration 0009), then `POST /api/v1/documents/{id}/reingest` with an
 empty body for existing books: it resumes at the stale `concepts` stage. The book page then links
-to **Concepts**, an interactive concept × section heat map with a per-concept trajectory; only
-concepts and sections up to your reading progress appear, and a section's note appears once you
-finish it. Live asks classify the question (factual / thematic / concept / other) and choose a
+to **Concepts**, an interactive concept × section heat map with a per-concept trajectory across
+the whole book. Live asks classify the question (factual / thematic / concept / other) and choose a
 retrieval strategy (`ROUTING_ENABLED`, default on). `RETRIEVAL_MAX_ITERATIONS` (1–3, default 1)
-turns on the gap-check loop that may run follow-up searches, each still limited to what you have
-read. Both cost extra small LLM calls (stages `route`, `gapcheck` in `llm_calls`).
+turns on the gap-check loop that may run follow-up searches, each scoped to this book. Both cost extra small LLM calls (stages `route`, `gapcheck` in `llm_calls`).
 
-## Notes, study and tutor mode (Phase 5)
+## Summaries, notes and tutor mode
 
-Run `make migrate` (migration 0010). The book page links to **Notes** (notes and highlights with
-full-text search), **Study** (spaced-repetition flashcards and multiple-choice quizzes generated
-from what you have read so far) and has a **Tutor mode** checkbox next to the question box (the
-tutor guides you with hints instead of answering directly). Everything is limited to your current
-reading position: set your progress with `PUT /api/v1/documents/{id}/progress`, and material from
-later chapters disappears again if you move it back. Generation uses the `study` LLM stage.
+Run `make migrate` (migrations 0011 and 0012 remove flashcards/quizzes and the reading-position
+table). The book page has tabs: **Read & Ask** (ask a question, with the book's text below),
+**Summary** (an overview of the whole book and one per section, generated at ingestion; also
+`GET /api/v1/documents/{id}/summaries`), **Concepts** and **Notes** (notes and highlights with
+full-text search). A **Tutor mode** checkbox next to the question box makes the assistant guide
+you with hints instead of answering directly. Questions are answered against the whole book.
 
 ## Evals
 

@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { useAddNote, useDeleteNote, useNotes } from "./study";
+import { useAddNote, useDeleteNote, useNotes } from "./notes";
 
 export function Notes({ documentId }: { documentId: string }) {
   const searchId = useId();
@@ -35,7 +35,7 @@ export function Notes({ documentId }: { documentId: string }) {
     <article>
       <h3 className="text-xl font-semibold">Notes and highlights</h3>
       <p className="muted mb-4 text-sm">
-        Notes attach to your current reading position and only show up once you have read that far.
+        Keep your own notes and highlighted passages for this book, and search them later.
       </p>
 
       <form className="mb-8 space-y-3" onSubmit={onSubmit}>
@@ -101,9 +101,7 @@ export function Notes({ documentId }: { documentId: string }) {
             key={n.id}
             className="rounded-sm border border-rule border-l-4 border-l-gold bg-parchment/40 p-4"
           >
-            <p className="eyebrow">
-              {n.kind === "highlight" ? "Highlight" : "Note"} · passage {n.anchor_ordinal}
-            </p>
+            <p className="eyebrow">{n.kind === "highlight" ? "Highlight" : "Note"}</p>
             {n.quote && (
               <blockquote className="my-2 border-l-2 border-rule pl-3 italic">{n.quote}</blockquote>
             )}
