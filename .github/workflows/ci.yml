@@ -30,8 +30,8 @@ jobs:
           --health-timeout 5s --health-retries 10
     steps:
       # TODO(before first push): pin third-party actions to commit SHAs.
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: PGADMIN_URL=postgresql://postgres:postgres@localhost:5432/postgres bash scripts/setup_db.sh
       - run: uv sync --frozen
         working-directory: backend
@@ -53,8 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
       - run: npm run lint
@@ -65,9 +65,9 @@ jobs:
   api-client-fresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: uv sync --frozen
         working-directory: backend
@@ -79,9 +79,9 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 22 }
       - run: uv sync --frozen && uv run pip-audit
         working-directory: backend
@@ -91,7 +91,7 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
@@ -108,7 +108,7 @@ jobs:
           --health-cmd "pg_isready -U postgres" --health-interval 5s
           --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: PGADMIN_URL=postgresql://postgres:postgres@localhost:5432/postgres bash scripts/setup_db.sh
       - run: docker build -t lh-api backend
       - run: docker build -t lh-web frontend
