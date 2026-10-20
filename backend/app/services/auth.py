@@ -63,7 +63,10 @@ class AuthService:
                 user = await self.users.create(email, pw_hash)
         except IntegrityError:  # concurrent signup with same email
             return
-        await self._send_verification(user)
+        if self.settings.email_verification_required:
+            await self._send_verification(user)
+        else:
+            user.email_verified = True
 
     async def _send_verification(self, user: User) -> None:
         ctx = await self._ctx(user.id)

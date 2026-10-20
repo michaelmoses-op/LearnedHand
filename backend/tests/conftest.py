@@ -111,6 +111,7 @@ def settings(test_urls: tuple[str, str], tmp_path: Path) -> Settings:
         storage_root=tmp_path / "storage",
         rate_limit_enabled=False,
         max_upload_bytes=4096,
+        email_verification_required=True,
     )
 
 

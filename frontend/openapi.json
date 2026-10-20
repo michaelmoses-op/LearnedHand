@@ -4,6 +4,11 @@
       "Accepted": {
         "additionalProperties": false,
         "properties": {
+          "email_verification_required": {
+            "default": true,
+            "title": "Email Verification Required",
+            "type": "boolean"
+          },
           "status": {
             "default": "accepted",
             "title": "Status",

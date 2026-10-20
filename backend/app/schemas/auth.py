@@ -55,3 +55,4 @@ class UserOut(StrictModel):
 
 class Accepted(StrictModel):
     status: str = "accepted"
+    email_verification_required: bool = True

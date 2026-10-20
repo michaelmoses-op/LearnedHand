@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 
 from app.core.ratelimit import RateLimiter
+from app.core.config import Settings
 from tests.conftest import PASSWORD, CapturingMailer, build_client, register_and_login
 
 A = "/api/v1/auth"
@@ -124,6 +125,20 @@ async def test_foreign_origin_rejected(client: AsyncClient) -> None:
         headers={"origin": "https://evil.example"},
     )
     assert r.status_code == 403 and r.json()["code"] == "csrf_failed"
+
+
+async def test_signup_auto_verifies_when_verification_disabled(
+    app: FastAPI, client: AsyncClient, mailer: CapturingMailer, settings: Settings
+) -> None:
+    settings.email_verification_required = False
+    email = _email()
+    assert (await client.post(f"{A}/signup", json={"email": email, "password": PASSWORD})).json() == {
+        "status": "accepted",
+        "email_verification_required": False,
+    }
+    assert not [m for m in mailer.sent if m[0] == email and "Verify" in m[1]]
+    await client.post(f"{A}/login", json={"email": email, "password": PASSWORD})
+    assert (await client.get(f"{A}/me")).json()["email_verified"] is True
 
 
 async def test_email_verification_single_use(client: AsyncClient, mailer: CapturingMailer) -> None:

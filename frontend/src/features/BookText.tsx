@@ -9,16 +9,37 @@ export function paragraphsOf(title: string, body: string): string[] {
   return paras;
 }
 
+/** EPUB line breaks are often hard `\n`; reflow for the responsive reader column. */
+export function reflowParagraphForReader(text: string): string {
+  return text
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Section text laid out like a printed page: one `<p>` per paragraph. */
-export function BookText({ title, body }: { title: string; body: string }) {
+export function BookText({
+  title,
+  body,
+  layout = "default",
+}: {
+  title: string;
+  body: string;
+  /** Reader panel: full width, left-aligned measure. */
+  layout?: "default" | "reader";
+}) {
   const paras = paragraphsOf(title, body);
+  const textClass = layout === "reader" ? "book-text reader-book-text mt-3" : "book-text mt-3";
   return (
-    <div className="book-text mt-3">
-      {paras.map((p, i) => (
-        <div key={i}>
-          <p className={i === 0 ? "dropcap" : undefined}>{p}</p>
-        </div>
-      ))}
+    <div className={textClass}>
+      {paras.map((p, i) => {
+        const text = layout === "reader" ? reflowParagraphForReader(p) : p;
+        return (
+          <div key={i}>
+            <p className={i === 0 ? "dropcap" : undefined}>{text}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -413,6 +413,11 @@ export interface components {
         /** Accepted */
         Accepted: {
             /**
+             * Email Verification Required
+             * @default true
+             */
+            email_verification_required: boolean;
+            /**
              * Status
              * @default accepted
              */

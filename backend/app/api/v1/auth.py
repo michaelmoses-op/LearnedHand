@@ -52,7 +52,7 @@ async def signup(
     limiter.check(f"signup:ip:{client_ip(request)}", 10, 3600)
     await AuthService(db, settings, mailer).signup(body.email, body.password)
     await db.commit()
-    return Accepted()
+    return Accepted(email_verification_required=settings.email_verification_required)
 
 
 @router.post("/login", status_code=204, dependencies=public)

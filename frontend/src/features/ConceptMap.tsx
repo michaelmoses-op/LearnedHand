@@ -1,68 +1,50 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ConceptMap as ConceptMapData, ConceptRow } from "./concepts";
 import { useConceptMap, useTrajectory } from "./concepts";
 
-const CELL = 28;
-const LABEL_W = 150;
-const ROW_H = 26;
-const HEADER_H = 8;
+function sectionLabel(title: string, index: number): string {
+  const short = title.length > 18 ? `${title.slice(0, 17)}…` : title;
+  return `${index + 1}. ${short}`;
+}
 
-/** Heat map: one row per concept, one column per section. */
-export function Heatmap({
+function ConceptLegend() {
+  return (
+    <div className="concept-legend" aria-hidden>
+      <span className="concept-legend-label">Mentions in section</span>
+      <span className="concept-legend-scale">
+        <span className="concept-legend-swatch concept-legend-swatch--none" />
+        <span>none</span>
+        <span className="concept-legend-swatch concept-legend-swatch--low" />
+        <span className="concept-legend-swatch concept-legend-swatch--high" />
+        <span>more</span>
+      </span>
+      <span className="concept-legend-hint">Columns follow section order in the book.</span>
+    </div>
+  );
+}
+
+function MatrixRow({
+  row,
   data,
   selected,
   onSelect,
 }: {
+  row: ConceptRow;
   data: ConceptMapData;
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
-  const width = LABEL_W + data.sections.length * CELL;
-  const height = HEADER_H + data.concepts.length * ROW_H;
-  return (
-    <svg
-      role="group"
-      aria-label="Concept heat map"
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className="max-w-full"
-    >
-      {data.concepts.map((row, i) => (
-        <HeatRow
-          key={row.id}
-          row={row}
-          y={HEADER_H + i * ROW_H}
-          data={data}
-          active={row.id === selected}
-          onSelect={onSelect}
-        />
-      ))}
-    </svg>
-  );
-}
+  const cells = useMemo(() => new Map(row.cells.map((c) => [c.section_id, c])), [row.cells]);
+  const active = row.id === selected;
+  const label = `${row.name}, in ${row.sections} sections`;
 
-function HeatRow({
-  row,
-  y,
-  data,
-  active,
-  onSelect,
-}: {
-  row: ConceptRow;
-  y: number;
-  data: ConceptMapData;
-  active: boolean;
-  onSelect: (id: string) => void;
-}) {
-  const cells = new Map(row.cells.map((c) => [c.section_id, c]));
   return (
-    <g
+    <tr
+      className={`concept-matrix-row ${active ? "concept-matrix-row--active" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label={`${row.name}, in ${row.sections} sections`}
+      aria-label={label}
       aria-pressed={active}
-      className="cursor-pointer outline-none [&:focus-visible>rect:first-child]:stroke-gold [&:focus-visible>rect:first-child]:stroke-2 [&:hover>rect:first-child]:fill-gold/15"
       onClick={() => onSelect(row.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -71,100 +53,132 @@ function HeatRow({
         }
       }}
     >
-      <rect
-        x={0}
-        y={y}
-        width={LABEL_W + data.sections.length * CELL}
-        height={ROW_H}
-        rx={3}
-        fill={active ? "rgb(176 138 60 / 0.18)" : "transparent"}
-      />
-      <text x={4} y={y + 17} fontSize={13} fontWeight={active ? 700 : 400} fill="currentColor">
-        {row.name.length > 20 ? `${row.name.slice(0, 19)}…` : row.name}
-      </text>
-      {data.sections.map((s, col) => {
+      <th scope="row" className="concept-matrix-name">
+        <span className="concept-matrix-name-text">{row.name}</span>
+        <span className="concept-matrix-name-meta">
+          {row.sections} section{row.sections === 1 ? "" : "s"} · {row.chunks} passage
+          {row.chunks === 1 ? "" : "s"}
+        </span>
+      </th>
+      {data.sections.map((s) => {
         const cell = cells.get(s.id);
+        const title = cell
+          ? `${row.name} · ${s.title}: ${cell.chunks} passage${cell.chunks === 1 ? "" : "s"}`
+          : `${row.name} · ${s.title}: not mentioned`;
         return (
-          <rect
-            key={s.id}
-            x={LABEL_W + col * CELL + 1}
-            y={y + 2}
-            width={CELL - 2}
-            height={ROW_H - 4}
-            rx={3}
-            fill={cell ? "#7b2d26" : "#e6d9b8"}
-            fillOpacity={cell ? 0.2 + 0.8 * cell.intensity : 0.5}
-            stroke={active ? "#2c2216" : "#c9b98f"}
-            strokeWidth={active ? 2 : 1}
-          >
-            <title>
-              {cell
-                ? `${row.name} · ${s.title}: ${cell.chunks} passage${cell.chunks === 1 ? "" : "s"}`
-                : `${row.name} · ${s.title}: not mentioned`}
-            </title>
-          </rect>
+          <td key={s.id} className="concept-matrix-cell">
+            <span
+              className={`concept-matrix-swatch ${cell ? "concept-matrix-swatch--on" : ""}`}
+              style={cell ? { opacity: 0.22 + 0.78 * cell.intensity } : undefined}
+              title={title}
+            />
+          </td>
         );
       })}
-    </g>
+    </tr>
   );
 }
 
-/** Line chart of a concept's presence across the sections, plus per-section notes. */
+function ConceptMatrix({
+  data,
+  selected,
+  onSelect,
+}: {
+  data: ConceptMapData;
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="concept-matrix-wrap reader-scroll">
+      <table className="concept-matrix">
+        <caption className="sr-only">
+          How often each concept appears in each section of the book
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" className="concept-matrix-corner">
+              Concept
+            </th>
+            {data.sections.map((s, i) => (
+              <th key={s.id} scope="col" className="concept-matrix-section">
+                <abbr title={s.title} className="concept-matrix-section-abbr">
+                  {i + 1}
+                </abbr>
+                <span className="concept-matrix-section-title">{sectionLabel(s.title, i)}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.concepts.map((row) => (
+            <MatrixRow
+              key={row.id}
+              row={row}
+              data={data}
+              selected={selected}
+              onSelect={onSelect}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Selected concept: presence across sections and optional notes. */
 function TrajectoryPanel({ documentId, conceptId }: { documentId: string; conceptId: string }) {
   const q = useTrajectory(documentId, conceptId);
   const map = useConceptMap(documentId);
-  if (q.isPending) return <p role="status">Loading trajectory…</p>;
-  if (q.isError)
+  if (q.isPending) return <p role="status">Loading…</p>;
+  if (q.isError) {
     return (
       <p role="alert" className="alert">
         {q.error.message}
       </p>
     );
+  }
+
   const sections = map.data?.sections ?? [];
   const counts = new Map(q.data.points.map((p) => [p.section_id, p.chunks]));
   const max = Math.max(1, ...counts.values());
-  const W = Math.max(sections.length - 1, 1) * 60 + 20;
-  const H = 70;
-  const pts = sections.map((s, i) => {
-    const x = 10 + i * 60;
-    const y = H - 10 - ((counts.get(s.id) ?? 0) / max) * (H - 20);
-    return { x, y, s, n: counts.get(s.id) ?? 0 };
-  });
+
   return (
-    <section aria-labelledby="traj-heading" className="mt-8 border-t border-rule pt-6">
-      <h3 id="traj-heading" className="font-semibold">
-        “{q.data.name}” across the book
+    <section aria-labelledby="traj-heading" className="concept-detail welcome-demo">
+      <p className="font-lockup text-xs tracking-[0.14em] text-[#7A1F1F]">Selected concept</p>
+      <h3 id="traj-heading" className="concept-detail-title">
+        {q.data.name}
       </h3>
-      <svg
-        role="img"
-        aria-label={`Trajectory of ${q.data.name}`}
-        width={W}
-        height={H}
-        className="mt-2 max-w-full"
-      >
-        <polyline
-          fill="none"
-          stroke="#7b2d26"
-          strokeWidth={2}
-          points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
-        />
-        {pts.map((p) => (
-          <circle key={p.s.id} cx={p.x} cy={p.y} r={4} fill="#7b2d26">
-            <title>{`${p.s.title}: ${p.n} passage${p.n === 1 ? "" : "s"}`}</title>
-          </circle>
-        ))}
-      </svg>
-      <ol className="mt-3 space-y-2 text-sm">
-        {q.data.points.map((p) => (
-          <li key={p.section_id}>
-            <span className="font-medium">{p.section_title}</span>{" "}
-            <span className="muted">
-              ({p.chunks} passage{p.chunks === 1 ? "" : "s"})
-            </span>
-            {p.note && <p>{p.note}</p>}
-          </li>
-        ))}
-      </ol>
+      <p className="theme-muted mb-4 text-sm">Passages per section, in reading order.</p>
+
+      <div className="concept-bars" role="img" aria-label={`Trajectory of ${q.data.name}`}>
+        {sections.map((s) => {
+          const n = counts.get(s.id) ?? 0;
+          const pct = (n / max) * 100;
+          return (
+            <div key={s.id} className="concept-bar-row" title={`${s.title}: ${n} passage${n === 1 ? "" : "s"}`}>
+              <span className="concept-bar-label">{s.title}</span>
+              <span className="concept-bar-track">
+                <span className="concept-bar-fill" style={{ width: `${pct}%` }} />
+              </span>
+              <span className="concept-bar-count tabular-nums">{n}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {q.data.points.length > 0 && (
+        <ol className="concept-detail-notes mt-5 space-y-3">
+          {q.data.points.map((p) => (
+            <li key={p.section_id} className="concept-detail-note">
+              <p className="font-medium">{p.section_title}</p>
+              <p className="theme-muted text-sm">
+                {p.chunks} passage{p.chunks === 1 ? "" : "s"}
+              </p>
+              {p.note && <p className="mt-1 text-[15px] leading-snug">{p.note}</p>}
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
@@ -172,12 +186,13 @@ function TrajectoryPanel({ documentId, conceptId }: { documentId: string; concep
 export function ConceptMap({ documentId }: { documentId: string }) {
   const map = useConceptMap(documentId);
   const [selected, setSelected] = useState<string | null>(null);
+
   return (
-    <article>
-      <h3 className="text-xl font-semibold">Concepts</h3>
-      <p className="muted mb-4 text-sm">
-        Ideas and how strongly each appears in every section. Select a row to see how that concept
-        develops through the book.
+    <article className="concept-map">
+      <h3 className="theme-article-title">Concepts</h3>
+      <p className="theme-muted mb-4 max-w-3xl text-sm leading-relaxed">
+        Recurring ideas extracted from your book. Each cell shows how much that concept appears in
+        that section—darker means more passages. Choose a row to see its path through the work.
       </p>
       {map.isPending && <p role="status">Loading…</p>}
       {map.isError && (
@@ -192,10 +207,17 @@ export function ConceptMap({ documentId }: { documentId: string }) {
       )}
       {map.data && map.data.concepts.length > 0 && (
         <>
-          <div className="overflow-x-auto">
-            <Heatmap data={map.data} selected={selected} onSelect={setSelected} />
+          <ConceptLegend />
+          <div className={`concept-map-body ${selected ? "concept-map-body--split" : ""}`}>
+            <ConceptMatrix
+              data={map.data}
+              selected={selected}
+              onSelect={(id) => setSelected((cur) => (cur === id ? null : id))}
+            />
+            {selected && (
+              <TrajectoryPanel documentId={documentId} conceptId={selected} />
+            )}
           </div>
-          {selected && <TrajectoryPanel documentId={documentId} conceptId={selected} />}
         </>
       )}
     </article>

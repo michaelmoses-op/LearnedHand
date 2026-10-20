@@ -5,13 +5,13 @@ export function Summary({ documentId, onAsk }: { documentId: string; onAsk?: () 
   const q = useSummaries(documentId);
   return (
     <article>
-      <h3 className="text-xl font-semibold">Summary</h3>
-      <p className="muted mb-4 text-sm">
+      <h3 className="theme-article-title">Summary</h3>
+      <p className="theme-muted mb-4 text-sm">
         An overview of the whole book, then each section.{" "}
         {onAsk && (
           <>
             Want to dig deeper?{" "}
-            <button type="button" className="link-action" onClick={onAsk}>
+            <button type="button" className="theme-link" onClick={onAsk}>
               Ask a question
             </button>
             .
@@ -30,8 +30,8 @@ export function Summary({ documentId, onAsk }: { documentId: string; onAsk?: () 
         </p>
       )}
       {q.data?.book && (
-        <section aria-labelledby="book-summary-heading" className="panel mb-6 p-5">
-          <h4 id="book-summary-heading" className="eyebrow">
+        <section aria-labelledby="book-summary-heading" className="welcome-demo mb-6">
+          <h4 id="book-summary-heading" className="font-lockup text-sm tracking-[0.14em] text-[#7A1F1F]">
             The whole book
           </h4>
           <p className="prose-book mt-2 whitespace-pre-wrap">{q.data.book}</p>

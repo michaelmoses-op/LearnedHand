@@ -2,60 +2,68 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
   Navigate,
   Outlet,
-  useNavigate,
+  useRouterState,
 } from "@tanstack/react-router";
-import { useState } from "react";
-import { BackToTop } from "../components/BackToTop";
-import { AuthForm } from "../features/AuthForm";
-import { useLogin, useLogout, useMe, useSignup } from "../features/auth";
+import { AppShell } from "../components/AppShell";
+import { AuthCenter } from "../components/AuthCenter";
+import { useLogout, useMe } from "../features/auth";
+import { LoginPage } from "../features/LoginPage";
+import { SignupPage } from "../features/SignupPage";
 import { ResetPassword, VerifyEmail } from "../features/EmailFlows";
 import { Library } from "../features/Library";
 import { Reader } from "../features/Reader";
 import { ReadyStatus } from "../features/ReadyStatus";
+import { Welcome } from "../features/Welcome";
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-10 sm:px-8">
-      <header className="pt-8 pb-6 text-center">
-        <p className="eyebrow">A reading companion for the humanities</p>
-        <h1 className="mt-1 text-4xl font-bold tracking-wide sm:text-5xl">
-          <Link to="/" className="text-ink no-underline hover:text-burgundy">
-            LearnedHand
-          </Link>
-        </h1>
-        <hr className="rule mx-auto mt-4 max-w-md" />
-      </header>
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <BackToTop />
+const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/verify-email", "/reset-password"]);
+
+function RootLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isPublic = PUBLIC_PATHS.has(pathname);
+  const isReader = pathname.startsWith("/documents/");
+  const isLibrary = pathname === "/library";
+
+  if (isPublic || isLibrary || isReader) {
+    if (isReader) {
+      return (
+        <div className="reader-shell min-h-screen">
+          <Outlet />
+        </div>
+      );
+    }
+    return <Outlet />;
+  }
+
+  return (
+    <div className="welcome-page flex min-h-screen items-center justify-center p-6">
+      <Outlet />
     </div>
-  ),
-});
+  );
+}
 
-function Home() {
+const rootRoute = createRootRoute({ component: RootLayout });
+
+function WelcomePage() {
+  const me = useMe();
+  if (me.isPending) return <p role="status">Loading…</p>;
+  if (me.data) return <Navigate to="/library" />;
+  return <Welcome />;
+}
+
+function LibraryPage() {
   const me = useMe();
   const logout = useLogout();
   if (me.isPending) return <p role="status">Loading…</p>;
   if (!me.data) return <Navigate to="/login" />;
   return (
-    <>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <p className="muted">
-          Signed in as <span className="font-semibold text-ink">{me.data.email}</span>
-        </p>
-        <button className="btn btn-secondary btn-sm" onClick={() => logout.mutate()}>
-          Log out
-        </button>
-      </div>
+    <AppShell email={me.data.email} onLogout={() => logout.mutate()}>
       <Library />
-      <div className="muted mt-10 text-center text-sm">
+      <div className="theme-muted mt-10 text-center text-sm">
         <ReadyStatus />
       </div>
-    </>
+    </AppShell>
   );
 }
 
@@ -68,68 +76,11 @@ function DocumentPage() {
 }
 
 function Login() {
-  const login = useLogin();
-  const navigate = useNavigate();
-  return (
-    <div className="panel mx-auto max-w-md p-8">
-      <h2 className="mb-5 text-2xl font-semibold">Log in</h2>
-      <AuthForm
-        submitLabel="Log in"
-        autoComplete="current-password"
-        pending={login.isPending}
-        serverError={login.error?.message}
-        onSubmit={async (v) => {
-          await login.mutateAsync(v).then(
-            () => navigate({ to: "/" }),
-            () => undefined,
-          );
-        }}
-      />
-      <p className="mt-5">
-        <Link to="/reset-password" search={{ token: undefined }} className="link-action">
-          Forgot password?
-        </Link>
-      </p>
-      <p className="mt-2">
-        No account?{" "}
-        <Link to="/signup" className="link-action">
-          Sign up
-        </Link>
-      </p>
-    </div>
-  );
+  return <LoginPage />;
 }
 
 function Signup() {
-  const signup = useSignup();
-  const [done, setDone] = useState(false);
-  if (done)
-    return (
-      <p role="status" className="notice mx-auto max-w-md">
-        Check your email to verify your address, then{" "}
-        <Link to="/login" className="link-action">
-          log in
-        </Link>
-        .
-      </p>
-    );
-  return (
-    <div className="panel mx-auto max-w-md p-8">
-      <h2 className="mb-5 text-2xl font-semibold">Create an account</h2>
-      <AuthForm
-        submitLabel="Sign up"
-        autoComplete="new-password"
-        pending={signup.isPending}
-        serverError={signup.error?.message}
-        onSubmit={async (v) => {
-          await signup.mutateAsync(v).then(
-            () => setDone(true),
-            () => undefined,
-          );
-        }}
-      />
-    </div>
-  );
+  return <SignupPage />;
 }
 
 const searchToken = (search: Record<string, unknown>) => ({
@@ -141,7 +92,15 @@ const verifyRoute = createRoute({
   validateSearch: searchToken,
   component: function Verify() {
     const { token } = verifyRoute.useSearch();
-    return token ? <VerifyEmail token={token} /> : <p role="alert">Missing token.</p>;
+    return token ? (
+      <VerifyEmail token={token} />
+    ) : (
+      <AuthCenter>
+        <p role="alert" className="alert">
+          Missing token.
+        </p>
+      </AuthCenter>
+    );
   },
 });
 const resetRoute = createRoute({
@@ -154,7 +113,16 @@ const resetRoute = createRoute({
   },
 });
 
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home });
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: WelcomePage,
+});
+const libraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library",
+  component: LibraryPage,
+});
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -174,6 +142,7 @@ const documentRoute = createRoute({
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
+    libraryRoute,
     loginRoute,
     signupRoute,
     verifyRoute,

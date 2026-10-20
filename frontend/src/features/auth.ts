@@ -31,8 +31,9 @@ export function useLogin() {
 export function useSignup() {
   return useMutation({
     mutationFn: async (body: { email: string; password: string }) => {
-      const { error } = await api.POST("/api/v1/auth/signup", { body });
-      if (error) throw new Error(problemMessage(error, "Sign-up failed"));
+      const { data, error } = await api.POST("/api/v1/auth/signup", { body });
+      if (error || !data) throw new Error(problemMessage(error, "Sign-up failed"));
+      return data;
     },
   });
 }

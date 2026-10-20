@@ -33,35 +33,35 @@ export function Notes({ documentId }: { documentId: string }) {
 
   return (
     <article>
-      <h3 className="text-xl font-semibold">Notes and highlights</h3>
-      <p className="muted mb-4 text-sm">
+      <h3 className="theme-article-title">Notes and highlights</h3>
+      <p className="theme-muted mb-4 text-sm">
         Keep your own notes and highlighted passages for this book, and search them later.
       </p>
 
       <form className="mb-8 space-y-3" onSubmit={onSubmit}>
-        <label htmlFor={quoteId} className="label">
+        <label htmlFor={quoteId} className="auth-label">
           Highlighted passage (optional)
         </label>
         <textarea
           id={quoteId}
-          className="field"
+          className="auth-field"
           rows={2}
           value={quote}
           onChange={(e) => setQuote(e.target.value)}
         />
-        <label htmlFor={bodyId} className="label">
+        <label htmlFor={bodyId} className="auth-label">
           Note
         </label>
         <textarea
           id={bodyId}
-          className="field"
+          className="auth-field"
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
         <button
           type="submit"
-          className="btn"
+          className="btn-lockup btn-lockup-primary"
           disabled={add.isPending || (!quote.trim() && !body.trim())}
         >
           Save
@@ -73,13 +73,13 @@ export function Notes({ documentId }: { documentId: string }) {
         )}
       </form>
 
-      <label htmlFor={searchId} className="label">
+      <label htmlFor={searchId} className="auth-label">
         Search notes
       </label>
       <input
         id={searchId}
         type="search"
-        className="field mb-4"
+        className="auth-field mb-4"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -99,16 +99,18 @@ export function Notes({ documentId }: { documentId: string }) {
         {notes.data?.map((n) => (
           <li
             key={n.id}
-            className="rounded-sm border border-rule border-l-4 border-l-gold bg-parchment/40 p-4"
+            className="welcome-demo border-l-4 border-l-[#E2C27A] p-4"
           >
-            <p className="eyebrow">{n.kind === "highlight" ? "Highlight" : "Note"}</p>
+            <p className="font-lockup text-xs tracking-[0.14em] text-[#7A1F1F]">
+              {n.kind === "highlight" ? "Highlight" : "Note"}
+            </p>
             {n.quote && (
               <blockquote className="my-2 border-l-2 border-rule pl-3 italic">{n.quote}</blockquote>
             )}
             {n.body && <p className="whitespace-pre-wrap">{n.body}</p>}
             <button
               type="button"
-              className="btn btn-danger btn-sm mt-3"
+              className="btn-lockup btn-lockup-sm mt-3 border border-[#7A1F1F] bg-transparent text-[#7A1F1F]"
               onClick={() => del.mutate(n.id)}
               aria-label={`Delete ${n.kind}`}
             >

@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { AuthCenter } from "../components/AuthCenter";
 import { api, problemMessage } from "../api/client";
 
 export function VerifyEmail({ token }: { token: string }) {
@@ -17,25 +18,33 @@ export function VerifyEmail({ token }: { token: string }) {
       verify.mutate();
     }
   });
-  if (verify.isError)
+  if (verify.isError) {
     return (
-      <p role="alert" className="alert">
-        {verify.error.message}
-      </p>
+      <AuthCenter>
+        <p role="alert" className="alert">
+          {verify.error.message}
+        </p>
+      </AuthCenter>
     );
-  if (verify.isSuccess)
+  }
+  if (verify.isSuccess) {
     return (
-      <p role="status" className="notice">
-        Email verified.{" "}
-        <Link to="/" className="link-action">
-          Continue
-        </Link>
-      </p>
+      <AuthCenter>
+        <p role="status" className="notice border-0 bg-transparent p-0 text-base">
+          Email verified.{" "}
+          <Link to="/login" className="theme-link">
+            Continue
+          </Link>
+        </p>
+      </AuthCenter>
     );
+  }
   return (
-    <p role="status" className="notice">
-      Verifying…
-    </p>
+    <AuthCenter>
+      <p role="status" className="muted text-base">
+        Verifying…
+      </p>
+    </AuthCenter>
   );
 }
 
@@ -56,86 +65,112 @@ export function ResetPassword({ token }: { token: string | undefined }) {
       if (error) throw new Error(problemMessage(error, "Reset failed"));
     },
   });
-  const input = "field";
 
   if (token) {
-    if (confirm.isSuccess)
+    if (confirm.isSuccess) {
       return (
-        <p role="status" className="notice">
-          Password updated.{" "}
-          <Link to="/login" className="link-action">
-            Log in
-          </Link>
-        </p>
-      );
-    return (
-      <form
-        className="panel mx-auto max-w-md space-y-4 p-8"
-        onSubmit={(e) => {
-          e.preventDefault();
-          confirm.mutate();
-        }}
-      >
-        <label htmlFor="new-password" className="label">
-          New password (12+ characters)
-        </label>
-        <input
-          id="new-password"
-          type="password"
-          autoComplete="new-password"
-          minLength={12}
-          maxLength={128}
-          required
-          className={input}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {confirm.isError && (
-          <p role="alert" className="alert">
-            {confirm.error.message}
+        <AuthCenter>
+          <p role="status" className="notice border-0 bg-transparent p-0 text-base">
+            Password updated.{" "}
+            <Link to="/login" className="theme-link">
+              Log in
+            </Link>
           </p>
-        )}
-        <button type="submit" className="btn w-full">
-          Set password
-        </button>
-      </form>
+        </AuthCenter>
+      );
+    }
+    return (
+      <AuthCenter>
+        <p className="font-lockup text-[13px] tracking-[0.14em] text-[#7A1F1F]">Account</p>
+        <h1 className="auth-card-title mt-1.5 mb-5 border-b-[3px] border-double border-[#1F1A14] pb-3 text-[28px] leading-tight font-normal italic">
+          Choose a new password
+        </h1>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            confirm.mutate();
+          }}
+        >
+          <div>
+            <label htmlFor="new-password" className="auth-label">
+              New password (12+ characters)
+            </label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              maxLength={128}
+              required
+              className="auth-field"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {confirm.isError && (
+            <p role="alert" className="alert">
+              {confirm.error.message}
+            </p>
+          )}
+          <button type="submit" className="btn-lockup btn-lockup-primary w-full">
+            Set password
+          </button>
+        </form>
+      </AuthCenter>
     );
   }
-  if (request.isSuccess)
+  if (request.isSuccess) {
     return (
-      <p role="status" className="notice">
-        If that address has an account, a reset link is on its way.
-      </p>
-    );
-  return (
-    <form
-      className="panel mx-auto max-w-md space-y-4 p-8"
-      onSubmit={(e) => {
-        e.preventDefault();
-        request.mutate();
-      }}
-    >
-      <label htmlFor="reset-email" className="label">
-        Email
-      </label>
-      <input
-        id="reset-email"
-        type="email"
-        autoComplete="email"
-        required
-        maxLength={254}
-        className={input}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      {request.isError && (
-        <p role="alert" className="alert">
-          {request.error.message}
+      <AuthCenter>
+        <p role="status" className="notice border-0 bg-transparent p-0 text-base leading-relaxed">
+          If that address has an account, a reset link is on its way.
         </p>
-      )}
-      <button type="submit" className="btn w-full">
-        Send reset link
-      </button>
-    </form>
+      </AuthCenter>
+    );
+  }
+  return (
+    <AuthCenter>
+      <p className="font-lockup text-[13px] tracking-[0.14em] text-[#7A1F1F]">Account</p>
+      <h1 className="auth-card-title mt-1.5 mb-5 border-b-[3px] border-double border-[#1F1A14] pb-3 text-[28px] leading-tight font-normal italic">
+        Reset password
+      </h1>
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          request.mutate();
+        }}
+      >
+        <div>
+          <label htmlFor="reset-email" className="auth-label">
+            Email
+          </label>
+          <input
+            id="reset-email"
+            type="email"
+            autoComplete="email"
+            required
+            maxLength={254}
+            className="auth-field"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        {request.isError && (
+          <p role="alert" className="alert">
+            {request.error.message}
+          </p>
+        )}
+        <button type="submit" className="btn-lockup btn-lockup-primary w-full">
+          Send reset link
+        </button>
+        <p className="text-center text-base">
+          <Link to="/login" className="theme-link">
+            Back to sign in
+          </Link>
+        </p>
+      </form>
+    </AuthCenter>
   );
 }

@@ -17,10 +17,10 @@ export function Library() {
 
   return (
     <section aria-labelledby="library-heading">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Your shelf</p>
-          <h2 id="library-heading" className="text-3xl font-semibold">
+          <p className="font-lockup text-sm tracking-[0.14em] text-[#7A1F1F]">Your shelf</p>
+          <h2 id="library-heading" className="theme-page-title mt-1">
             Library
           </h2>
         </div>
@@ -39,8 +39,8 @@ export function Library() {
           />
           <label
             htmlFor="upload"
-            className={`btn cursor-pointer peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold ${
-              upload.isPending ? "opacity-60" : ""
+            className={`btn-lockup btn-lockup-primary cursor-pointer ${
+              upload.isPending ? "pointer-events-none opacity-60" : ""
             }`}
           >
             Upload a book (.epub or .pdf)
@@ -65,9 +65,9 @@ export function Library() {
         </p>
       )}
       {docs.isSuccess && items.length === 0 && (
-        <div className="panel p-10 text-center">
-          <p className="text-lg">Your library is empty. Upload a book you own to get started.</p>
-          <p className="muted mt-2 text-sm">
+        <div className="shelf-card p-10 text-center">
+          <p className="text-lg leading-relaxed">Your library is empty. Upload a book you own to get started.</p>
+          <p className="theme-muted mt-2 text-sm">
             Any DRM-free EPUB or PDF with selectable text is supported.
           </p>
         </div>
@@ -75,17 +75,18 @@ export function Library() {
 
       <ul className="space-y-4">
         {items.map((d) => (
-          <li
-            key={d.id}
-            className="panel flex flex-wrap items-center justify-between gap-4 border-l-8 border-l-burgundy p-5"
-          >
+          <li key={d.id} className="shelf-card flex flex-wrap items-center justify-between gap-4 p-5">
             <div className="min-w-0">
-              <p className="text-xl font-semibold">
-                <Link to="/documents/$documentId" params={{ documentId: d.id }}>
+              <p className="text-xl font-medium">
+                <Link
+                  to="/documents/$documentId"
+                  params={{ documentId: d.id }}
+                  className="theme-link font-medium no-underline hover:underline"
+                >
                   {d.title}
                 </Link>
               </p>
-              <p className="muted mt-1 flex items-center gap-2 text-sm">
+              <p className="theme-muted mt-1 flex items-center gap-2 text-sm">
                 <span
                   aria-hidden="true"
                   className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT[d.status] ?? "bg-gold"}`}
@@ -101,16 +102,17 @@ export function Library() {
                 </p>
               )}
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               <Link
                 to="/documents/$documentId"
                 params={{ documentId: d.id }}
-                className="btn btn-sm"
+                className="btn-lockup btn-lockup-outline btn-lockup-sm"
               >
                 Open<span className="sr-only"> {d.title}</span>
               </Link>
               <button
-                className="btn btn-danger btn-sm"
+                type="button"
+                className="btn-lockup btn-lockup-sm border border-[#7A1F1F] bg-transparent text-[#7A1F1F]"
                 onClick={() => {
                   if (window.confirm(`Delete "${d.title}"? This removes the file permanently.`))
                     remove.mutate(d.id);
@@ -124,7 +126,8 @@ export function Library() {
       </ul>
       {docs.hasNextPage && (
         <button
-          className="btn btn-secondary mt-4"
+          type="button"
+          className="btn-lockup btn-lockup-outline btn-lockup-sm mt-6"
           onClick={() => docs.fetchNextPage()}
           disabled={docs.isFetchingNextPage}
         >

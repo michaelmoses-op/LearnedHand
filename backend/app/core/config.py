@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=250 * 1024 * 1024, ge=1024)
     rate_limit_enabled: bool = True
     frontend_base_url: str = "http://localhost:5173"
+    # When false, signup marks the account verified and skips the verify-email message (local dev).
+    email_verification_required: bool = True
 
     cookie_secure: bool = False
     # Comma-separated in the environment (honcho/dotenv-safe), e.g. http://a,http://b
